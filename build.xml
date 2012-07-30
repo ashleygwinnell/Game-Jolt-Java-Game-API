@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<!--	
+	GJ API Build File
+-->
+
+<project default="jar" name="GJAPI">
+   
+	<property name="src.dir" value="src" />
+	<property name="obj.dir" value="bin" />
+	<property name="target.dir" value="." />
+	<property name="javadoc.dir" value="docs" />
+  
+	<!-- Compile and archive Aethershard. -->
+    <target name="jar" depends="clean">
+        <antcall target="compile" />
+        <antcall target="archive" />
+    </target>
+	
+	<!-- Clean up the environment. -->
+    <target name="clean">
+        <delete includeEmptyDirs="true">
+            <fileset dir="${obj.dir}" includes="**/*" defaultExcludes="no" />
+        </delete>
+        <delete file="${target.dir}/GJAPI.jar" />
+        <!--<delete>
+            <fileset dir="${src.dir}" includes="**/*.orig" />
+        </delete>
+        <delete>
+            <fileset dir="." defaultExcludes="no">
+                <include name="**/*.DS_Store"/>
+            </fileset>
+        </delete>-->
+	</target>
+	
+	<!-- Compile the code put results into obj.dir. -->
+    <target name="compile">
+        <mkdir dir="${obj.dir}" />
+        <javac destdir="${obj.dir}" debug="on" includeantruntime="false">
+            <src path="${src.dir}/org/gamejolt" />
+            <classpath>
+				
+            </classpath>
+        </javac>
+    </target>
+	
+	<!-- Jar compiled code and place result into target.dir. -->
+    <target name="archive">
+        <jar destfile="${target.dir}/GJAPI.jar">
+            <fileset dir="${obj.dir}" />
+        </jar>
+    </target>
+	
+	<!-- Generate Javadocs. -->
+	<target name="javadoc">
+		<javadoc sourcepath="${src.dir}" destdir="${javadoc.dir}" author="true" version="true" windowtitle="Game Jolt API">
+			<!-- <fileset dir="src" defaultexcludes="yes">
+				<exclude name="Test/**"/>
+			</fileset> -->	
+			<doctitle><![CDATA[<h1>Game Jolt API JavaDoc</h1>]]></doctitle>
+			<bottom><![CDATA[<i>Copyright &#169; 2009 - 2010 <a href='http://www.ashleygwinnell.co.uk/' target='new'>Ashley Gwinnell</a>. All Rights Reserved.</i>]]></bottom>
+			<link href="http://www.ashleygwinnell.co.uk"/>
+		</javadoc>
+	</target>
+  
+</project>
