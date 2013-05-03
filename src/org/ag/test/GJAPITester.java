@@ -13,11 +13,13 @@ public class GJAPITester {
 	public static void main(String[] args) {
 		
 		// Define these variables yourself! 
-		final int GAME_ID = 1;
-		final String GAME_SECRET = "";
+		final int GAME_ID = 14106;
+		final String GAME_SECRET = "48533b61114a237a39e88bff593829c6";
 		
-		final String USER_NAME = "";
-		final String USER_TOKEN = "";
+		final String USER_NAME = "elpaysanmobmember125";
+		final String USER_TOKEN = "8043fd";
+		
+		final int table_id = 0;
 		
 		// Initialise Game Jolt API
 		GameJoltAPI api = new GameJoltAPI(GAME_ID, GAME_SECRET);
@@ -42,7 +44,18 @@ public class GJAPITester {
 		ArrayList<Highscore> highscores = api.getHighscores();
 		
 		// Add a Highscore
-		api.addHighscore("100 Coins", 100);
+		if (table_id!=0){
+			api.addHighscore(table_id,"100 Coins Test", 100);
+		}else{
+			api.addHighscore("100 Coins Test", 100);
+		}
+		
+		//get highscores
+		if (table_id!=0){
+			api.getHighscores(table_id);
+		}else{
+			api.getHighscores();
+		}
 		
 		// Get Data Store Keys (User-Specific, requires verified User)
 		ArrayList<String> userDataStoreKeys = api.getDataStoreKeys(DataStoreType.USER);
