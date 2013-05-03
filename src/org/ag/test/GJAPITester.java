@@ -13,11 +13,11 @@ public class GJAPITester {
 	public static void main(String[] args) {
 		
 		// Define these variables yourself! 
-		final int GAME_ID = 14106;
-		final String GAME_SECRET = "48533b61114a237a39e88bff593829c6";
+		final int GAME_ID = 1;
+		final String GAME_SECRET = "";
 		
-		final String USER_NAME = "elpaysanmobmember125";
-		final String USER_TOKEN = "8043fd";
+		final String USER_NAME = "";
+		final String USER_TOKEN = "";
 		
 		final int table_id = 0;
 		
