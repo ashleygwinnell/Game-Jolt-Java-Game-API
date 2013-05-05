@@ -225,11 +225,30 @@ public class GameJoltAPI
 	public ArrayList<Highscore> getHighscores(boolean all) {
 		return this.getHighscores(all, 100);
 	}
+	/**
+	 * Retrieve all of the Highscores of the Highscoretable from GameJolt for the game in an array.
+	 * @param id the id of the Highscoretable
+	 * @return all of the Highscores from GameJolt for the game in an array.
+	 */
+	public ArrayList<Highscore> getHighscores(int id) {
+		return this.getHighscores(id,true, 100);
+	}
 	
 	/**
 	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
 	 * 
+	 * @param id the id of the Highscoretable
 	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
+	 * @return An array of Highscore objects on success, an empty array or null on failure.
+	 */
+	public ArrayList<Highscore> getHighscores(int id,boolean all) {
+		return this.getHighscores(id, all, 100);
+	}
+	/**
+	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
+	 * 
+	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
+	 * @param limit the maximum amount of highscores to receive
 	 * @return An array of Highscore objects on success, an empty array or null on failure.
 	 */
 	public ArrayList<Highscore> getHighscores(boolean all, int limit) {
@@ -301,7 +320,86 @@ public class GameJoltAPI
 			return null;
 		}
 	}
-
+	
+	/**
+	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
+	 * @param id the id of the table
+	 * 
+	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
+	 * @param limit the number of scores you want to receive (max. 100)
+	 * @return An array of Highscore objects on success, an empty array or null on failure.
+	 */
+	public ArrayList<Highscore> getHighscores(int id, boolean all, int limit) {
+		if (all == false && !this.verified) { 
+			if (verbose) { System.err.println("GameJoltAPI: Could not get the Highscores for the verified user as the user is not verified."); }
+			return null; 
+		}
+		ArrayList<Highscore> highscores = new ArrayList<Highscore>();
+		String response = null;
+		
+		try {
+			HashMap<String, String> params = new HashMap<String, String>();
+			if (all == true) { // all highscores
+				params.put("limit", (""+limit) + this.privateKey);
+				String url = this.getRequestURL("scores", params, false);
+				
+				params.put("limit", ""+limit);
+				params.put("signature", this.MD5(url));
+				params.put("table_id", String.valueOf(id));
+				url = this.getRequestURL("scores", params, false);
+				if (verbose) {
+					System.out.println(url);
+				}
+				response = openURLAndGetResponse(url);
+				//System.out.println(response); 				
+			} else { // verified user's highscores.
+				params.put("username", username);
+				params.put("user_token", usertoken+this.privateKey);  
+				params.put("limit", ""+limit);
+				String url = this.getRequestURL("scores", params, true);
+				
+				params.put("user_token", usertoken);  
+				params.put("signature", this.MD5(url));
+				url = this.getRequestURL("scores", params, true);
+				if (verbose) {
+					System.out.println(url);
+				}
+				response = openURLAndGetResponse(url);
+			}
+			
+			if (verbose) {
+				System.out.println(response);
+				//System.out.println("numlines:" + response.split("\n").length);
+			}
+			
+			String[] lines = response.split("\n");
+			if (!lines[0].trim().equals("success:\"true\"")) {
+				if (verbose) { 
+					System.err.println("GameJoltAPI: Could not get the Highscores."); 
+					System.err.println(response);
+				}
+				return null;
+			}
+			Highscore h = null;
+			for (int i = 1; i < lines.length; i++) {
+				if (lines[i].contains("scores")) { break; }
+				String key = lines[i].substring(0, lines[i].indexOf(':'));
+				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+				if (key.equals("score")) {
+					h = new Highscore();
+				}
+				h.addProperty(key, value);
+				if (key.equals("stored")) {
+					highscores.add(h);
+				}
+			}
+			return highscores;
+		} catch(Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	/**
 	 * Add a highscore for the currently verified Game Jolt user.
 	 * @param score The String of the score, e.g. "5 Grapefruits". This is shown on the site.
@@ -310,6 +408,16 @@ public class GameJoltAPI
 	 */
 	public boolean addHighscore(String score, int sort) {
 		return this.addHighscore(score, sort, "");
+	}
+	/**
+	 * Add a highscore for the currently verified Game Jolt user.
+	 * @param id the id of the Highscoretable
+	 * @param score The String of the score, e.g. "5 Grapefruits". This is shown on the site.
+	 * @param sort The sortable value of the score, e.g. 5. This is shown on the site.
+	 * @return true if successful, otherwise false.
+	 */
+	public boolean addHighscore(int id, String score, int sort) {
+		return this.addHighscore(id, score, sort, "");
 	}
 	
 	/**
@@ -333,6 +441,49 @@ public class GameJoltAPI
 			params.put("extra_data", ""+extra);
 			params.put("sort", ""+sort);
 			
+			String url = this.getRequestURL("scores/add", params, true);
+			
+			params.put("user_token", usertoken);
+			//params.put("signature", "bd1f056cf87f4cffafc9e41263da73a7");
+			params.put("signature", this.MD5(url));
+			
+			url = this.getRequestURL("scores/add", params, true);
+			if (verbose) { System.out.println(url);}
+			response = openURLAndGetResponse(url);
+			if (verbose) { System.out.println(response); }
+			
+			if (response.contains("success:\"false\"") || response.equals("REQUEST_FAILED")) {
+				if (verbose) { System.err.println("GameJoltAPI: Could not add the High Score."); }
+				if (verbose) { System.out.println(response); }
+				return false;
+			}
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+	/**
+	 * Add a highscore for the currently verified Game Jolt user.
+	 * @param id the id of the Highscoretable
+	 * @param score The String of the score, e.g. "5 Grapefruits". This is shown on the site.
+	 * @param sort The sortable value of the score, e.g. 5. This is shown on the site.
+	 * @param extra Extra information to be stored about this score as a String, such as how the score was made, or time taken. This is not shown on the site.
+	 * @return true if successful, otherwise false.
+	 */
+	public boolean addHighscore(int id, String score, int sort, String extra) {
+		if (!this.verified) {
+			if (verbose) { System.err.println("GameJoltAPI: Could not add the High Score because the user is not verified."); }
+			return false;
+		}
+		String response = null;
+		try {
+			HashMap<String, String> params = new HashMap<String, String>();
+			params.put("username", username);
+			params.put("user_token", usertoken+this.privateKey);  
+			params.put("score", ""+score);
+			params.put("extra_data", ""+extra);
+			params.put("sort", ""+sort);
+			params.put("table_id", String.valueOf(id));
 			String url = this.getRequestURL("scores/add", params, true);
 			
 			params.put("user_token", usertoken);
@@ -977,7 +1128,6 @@ public class GameJoltAPI
 	 * @param method The API method to call. Note that gamejolt.com/api/game/ is already prepended.
 	 * @param paramsLine The GET request params, such as "trophy_id=23&achieved=empty".
 	 * @return The response, default is keypair.
-	 * @throws UnsupportedEncodingException 
 	 */
 	public String request(String method, String paramsLine) 
 	{
