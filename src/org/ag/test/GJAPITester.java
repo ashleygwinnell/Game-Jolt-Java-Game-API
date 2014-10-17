@@ -19,6 +19,7 @@ public class GJAPITester {
 		final String USER_NAME = "";
 		final String USER_TOKEN = "";
 		
+		final int trophy_id= 0;
 		final int table_id = 0;
 		
 		// Initialise Game Jolt API
@@ -33,15 +34,17 @@ public class GJAPITester {
 		ArrayList<Trophy> trophies = api.getTrophies();
 		
 		// Achieve a Trophy
-		api.achieveTrophy(1);
+		api.achieveTrophy(trophy_id);
+		
+		Trophy t = api.getTrophy(trophy_id);
+		if (!t.isAchieved()){
+			System.err.println("Trophy was achieved, but is not marked achieved...");
+		}
 		
 		// Play Sessions
 		api.sessionOpen();
 		api.sessionUpdate();
 		api.sessionClose();
-		
-		// Get Highscores
-		ArrayList<Highscore> highscores = api.getHighscores();
 		
 		// Add a Highscore
 		if (table_id!=0){
