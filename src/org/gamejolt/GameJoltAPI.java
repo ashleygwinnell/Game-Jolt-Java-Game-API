@@ -339,11 +339,11 @@ public class GameJoltAPI
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
 			if (all == true) { // all highscores
-				params.put("limit", (""+limit) + this.privateKey);
-				params.put("table_id", String.valueOf(id));
+				params.put("table_id", String.valueOf(id) + this.privateKey);
+				params.put("limit", (""+limit));
 				String url = this.getRequestURL("scores", params, false);
 				
-				params.put("limit", ""+limit);
+				params.put("table_id", String.valueOf(id));
 				params.put("signature", this.MD5(url));
 				url = this.getRequestURL("scores", params, false);
 				if (verbose) {
@@ -355,6 +355,7 @@ public class GameJoltAPI
 				params.put("username", username);
 				params.put("user_token", usertoken+this.privateKey);  
 				params.put("limit", ""+limit);
+				params.put("table_id", String.valueOf(id));
 				String url = this.getRequestURL("scores", params, true);
 				
 				params.put("user_token", usertoken);  
