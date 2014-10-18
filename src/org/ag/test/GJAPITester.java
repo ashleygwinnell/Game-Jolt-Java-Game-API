@@ -50,8 +50,10 @@ public class GJAPITester {
 		int k = new Random().nextInt(200);
 		if (table_id!=0){
 			api.addHighscore(table_id,k+" Coins Test",k);
+			api.addHighscore(table_id,"testguest",k+" Coins Test Guest", k-1);
 		}else{
 			api.addHighscore(k+" Coins Test", k);
+			api.addHighscore("testguest",k+" Coins Test Guest", k-1);
 		}
 		
 		//get highscores
