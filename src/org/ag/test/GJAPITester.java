@@ -19,8 +19,8 @@ public class GJAPITester {
 		final String USER_NAME = "";
 		final String USER_TOKEN = "";
 		
-		final int trophy_id= 0;
-		final int table_id = 0;
+		final int TROPHY_ID= 0;
+		final int TABLE_ID = 0;
 		
 		// Initialise Game Jolt API
 		GameJoltAPI api = new GameJoltAPI(GAME_ID, GAME_SECRET);
@@ -34,31 +34,33 @@ public class GJAPITester {
 		ArrayList<Trophy> trophies = api.getTrophies();
 		
 		// Achieve a Trophy
-		api.achieveTrophy(trophy_id);
+		api.achieveTrophy(TROPHY_ID);
 		
-		Trophy t = api.getTrophy(trophy_id);
+		//get single trophy and check if it is achieved
+		Trophy t = api.getTrophy(TROPHY_ID);
 		if (!t.isAchieved()){
 			System.err.println("Trophy was achieved, but is not marked achieved...");
 		}
 		
 		// Play Sessions
 		api.sessionOpen();
+		api.sessionCheck();
 		api.sessionUpdate();
 		api.sessionClose();
-//		
+		
 		// Add a Highscore
 		int k = new Random().nextInt(200);
-		if (table_id!=0){
-			api.addHighscore(table_id,k+" Coins Test",k);
-			api.addHighscore(table_id,"testguest",k+" Coins Test Guest", k-1);
+		if (TABLE_ID!=0){
+			api.addHighscore(TABLE_ID,k+" Coins Test",k);
+			api.addHighscore(TABLE_ID,"testguest",k+" Coins Test Guest", k-1);
 		}else{
 			api.addHighscore(k+" Coins Test", k);
 			api.addHighscore("testguest",k+" Coins Test Guest", k-1);
 		}
 		
 		//get highscores
-		if (table_id!=0){
-			api.getHighscores(table_id);
+		if (TABLE_ID!=0){
+			api.getHighscores(TABLE_ID);
 		}else{
 			api.getHighscores();
 		}
@@ -66,8 +68,8 @@ public class GJAPITester {
 		api.getHighscoreTables();
 		
 		//get rank of a score
-		if (table_id!=0){
-			api.getHighscoreRank(100,table_id);
+		if (TABLE_ID!=0){
+			api.getHighscoreRank(100,TABLE_ID);
 		}else{
 			api.getHighscoreRank(100);
 		}

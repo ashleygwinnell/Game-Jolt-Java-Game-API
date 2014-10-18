@@ -244,57 +244,7 @@ public class GameJoltAPI
 	 * @return An array of Highscore objects on success, an empty array or null on failure.
 	 */
 	public ArrayList<Highscore> getHighscores(boolean all, int limit) {
-		if (all == false && !this.verified) { 
-			if (verbose) { System.err.println("GameJoltAPI: Could not get the Highscores for the verified user as the user is not verified."); }
-			return null; 
-		}
-		ArrayList<Highscore> highscores = new ArrayList<Highscore>();
-		String response = null;
-		
-		try {
-			HashMap<String, String> params = new HashMap<String, String>();
-			if (all == true) { // all highscores
-				params.put("limit", (""+limit));
-				
-				response = request("scores", params, false);			
-			} else { // verified user's highscores.
-				params.put("username", username);
-				params.put("user_token", usertoken);  
-				params.put("limit", ""+limit);
-				
-				response = request("scores", params, true);
-			}
-			
-			if (verbose) {
-				System.out.println(response);
-			}
-			
-			String[] lines = response.split("\n");
-			if (!lines[0].trim().equals("success:\"true\"")) {
-				if (verbose) { 
-					System.err.println("GameJoltAPI: Could not get the Highscores."); 
-					System.err.println(response);
-				}
-				return null;
-			}
-			Highscore h = null;
-			for (int i = 1; i < lines.length; i++) {
-				if (lines[i].contains("scores")) { break; }
-				String key = lines[i].substring(0, lines[i].indexOf(':'));
-				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-				if (key.equals("score")) {
-					h = new Highscore();
-				}
-				h.addProperty(key, value);
-				if (key.equals("stored")) {
-					highscores.add(h);
-				}
-			}
-			return highscores;
-		} catch(Exception e) {
-			e.printStackTrace();
-			return null;
-		}
+		return getHighscores(0,all,limit);
 	}
 	
 	/**
@@ -316,7 +266,8 @@ public class GameJoltAPI
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
 			if (all == true) { // all highscores
-				params.put("table_id", String.valueOf(id));
+				if (id!=0)
+					params.put("table_id", String.valueOf(id));
 				params.put("limit", (""+limit));
 
 				response = request("scores", params, false);			
@@ -324,7 +275,8 @@ public class GameJoltAPI
 				params.put("username", username);
 				params.put("user_token", usertoken);  
 				params.put("limit", ""+limit);
-				params.put("table_id", String.valueOf(id));
+				if (id!=0)
+					params.put("table_id", String.valueOf(id));
 				
 				response = request("scores", params, true);
 			}
@@ -365,41 +317,7 @@ public class GameJoltAPI
 	 * @return the closest rank to the score
 	 */
 	public int getHighscoreRank(int score){
-		String response = null;
-		
-		try {
-			HashMap<String, String> params = new HashMap<String, String>();
-			params.put("sort", String.valueOf(score));
-			
-			response = request("scores/get-rank", params, false);
-			if (verbose) {
-				System.out.println(response);
-			}
-			
-			String[] lines = response.split("\n");
-			if (!lines[0].trim().equals("success:\"true\"")) {
-				if (verbose) { 
-					System.err.println("GameJoltAPI: Could not get the Rank of the score."); 
-					System.err.println(response);
-				}
-				return -1;
-			}
-			
-			for (int i = 1; i < lines.length; i++) {
-				String key = lines[i].substring(0, lines[i].indexOf(':'));
-				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-				if (key.equals("rank")) {
-					return Integer.parseInt(value);
-				}
-			}
-			if (verbose){
-				System.err.println("the rank-entry is missing in the answer that was received.");
-			}
-			return -1;
-		} catch(Exception e) {
-			e.printStackTrace();
-			return -1;
-		}
+		return getHighscoreRank(score, 0);
 	}
 	/**
 	 * retrieve the Rank with the score closest to the given score.
@@ -412,14 +330,14 @@ public class GameJoltAPI
 		
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
-			params.put("table_id", String.valueOf(id));
+			if (id!=0)
+				params.put("table_id", String.valueOf(id));
 			params.put("sort", String.valueOf(score));
 
 			response = request("scores/get-rank", params, false);
 			
 			if (verbose) {
 				System.out.println(response);
-				//System.out.println("numlines:" + response.split("\n").length);
 			}
 			
 			String[] lines = response.split("\n");
@@ -454,14 +372,7 @@ public class GameJoltAPI
 		ArrayList<HighscoreTable> tables = new ArrayList<>();
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
-			String url = this.getRequestURL("scores/tables", params, false,true);
-			
-			params.put("signature", this.MD5(url));
-			url = this.getRequestURL("scores/tables", params, false);
-			if (verbose) {
-				System.out.println(url);
-			}
-			response = openURLAndGetResponse(url);
+			response = request("scores/tables", params, false);
 			
 			if (verbose) {
 				System.out.println(response);
@@ -573,6 +484,14 @@ public class GameJoltAPI
 	public boolean addHighscore(String guest_username, String score, int sort) {
 		return this.addHighscore(0,guest_username, score, sort, "");
 	}
+	/**
+	 * Adds a HighScore for a Guest!
+	 * @param if the id of the HighscoreTable
+	 * @param guest_username The desired name of the guest you want to add the highscore for.
+	 * @param score The String of the score, e.g. "5 Grapefruits". This is shown on the site.
+	 * @param sort The sortable value of the score, e.g. 5. This is shown on the site.
+	 * @return true if successful, false otherwise.
+	 */
 	public boolean addHighscore(int id,String guest_username, String score, int sort) {
 		return this.addHighscore(id,guest_username, score, sort, "");
 	}
@@ -587,7 +506,15 @@ public class GameJoltAPI
 	public boolean addHighscore(String guest_username, String score, int sort, String extra) {
 		return addHighscore(0, guest_username,score, sort);
 	}
-	
+	/**
+	 * Adds a HighScore for a Guest!
+	 * @param id the id of the highscoretable
+	 * @param guest_username The desired name of the guest you want to add the highscore for.
+	 * @param score The String of the score, e.g. "5 Grapefruits". This is shown on the site.
+	 * @param sort The sortable value of the score, e.g. 5. This is shown on the site.
+	 * @param extra Extra information to be stored about this score as a String, such as how the score was made, or time taken. This is not shown on the site.
+	 * @return true if successful, false otherwise.
+	 */
 	public boolean addHighscore(int id,String guest_username, String score, int sort, String extra) {
 		String response = null;
 		try {
@@ -891,7 +818,32 @@ public class GameJoltAPI
 			return false;
 		}
 	}
-	
+	/**
+	 * Check if a session exists for the player
+	 * @return true if the session exists, false if no session exists, the player is not verified or an Exception occured
+	 */
+	public boolean sessionCheck(){
+		if (!this.verified) { 
+			if (verbose) {
+				System.err.println("GameJoltAPI: Could not check Play Session: User must be verified.\n");
+			}
+			return false; 
+		}
+		String response = "";
+		response = this.request("sessions/check/", "");
+		if (this.verbose) { System.out.println(response); }
+		if (response.contains("success:\"true\"")) {
+			return true;
+		} else if (response.contains("success:\"false\"")) {
+			return false;
+		}else{
+			if (verbose) {
+				System.err.println("GameJoltAPI: Could not update (ping) Play Session.\n");
+				System.err.println(response);
+			}
+			return false;
+		}
+	}
 	/**
 	 * Update the current play session with Game Jolt. 
 	 * You should call this every 60 seconds as Game Jolt closes play sessions after 120 seconds of inactivity.
@@ -922,7 +874,13 @@ public class GameJoltAPI
 			return false; 
 		}
 		String response = "";
-		response = this.request("sessions/ping/", "");
+		HashMap<String,String> params = new HashMap<String,String>();
+		if (active){
+			params.put("status", "active");
+		}else{
+			params.put("status", "idle");
+		}
+		response = this.request("sessions/ping/", params);
 		if (this.verbose) { System.out.println(response); }
 		if (response.contains("success:\"true\"")) {
 			return true;
@@ -1326,32 +1284,6 @@ public class GameJoltAPI
 		if (addUserToken) {
 			urlString += "&user_token=" + user_token;
 		}
-		
-		return urlString;
-	}
-	
-	private String getRequestURL(String method, HashMap<String, String> params, boolean addUserToken,boolean privateKey) throws UnsupportedEncodingException {
-		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
-		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
-
-		params.put("format", "keypair");
-		Set<String> keyset = params.keySet();
-		Iterator<String> keys = keyset.iterator();
-		String user_token = "";
-		while (keys.hasNext()) {
-			String key = keys.next();
-			String value = params.get(key);
-			if (key.equals("user_token")) {
-				user_token = value;
-				continue;
-			}
-			urlString += "&" + key + "=" + URLEncoder.encode(value, "UTF-8");
-		}
-		if (addUserToken) {
-			urlString += "&user_token=" + user_token;
-		}
-		if (privateKey)
-			urlString+=this.privateKey;
 		
 		return urlString;
 	}
