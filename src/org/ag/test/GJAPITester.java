@@ -1,11 +1,11 @@
 package org.ag.test;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import org.gamejolt.DataStore.DataStoreOperation;
 import org.gamejolt.DataStore.DataStoreType;
 import org.gamejolt.GameJoltAPI;
-import org.gamejolt.Highscore;
 import org.gamejolt.Trophy;
 
 public class GJAPITester {
@@ -45,12 +45,13 @@ public class GJAPITester {
 		api.sessionOpen();
 		api.sessionUpdate();
 		api.sessionClose();
-		
+//		
 		// Add a Highscore
+		int k = new Random().nextInt(200);
 		if (table_id!=0){
-			api.addHighscore(table_id,"100 Coins Test", 100);
+			api.addHighscore(table_id,k+" Coins Test",k);
 		}else{
-			api.addHighscore("100 Coins Test", 100);
+			api.addHighscore(k+" Coins Test", k);
 		}
 		
 		//get highscores
@@ -58,6 +59,15 @@ public class GJAPITester {
 			api.getHighscores(table_id);
 		}else{
 			api.getHighscores();
+		}
+		//get highscoretables
+		api.getHighscoreTables();
+		
+		//get rank of a score
+		if (table_id!=0){
+			api.getHighscoreRank(100,table_id);
+		}else{
+			api.getHighscoreRank(100);
 		}
 		
 		// Get Data Store Keys (User-Specific, requires verified User)
@@ -69,6 +79,8 @@ public class GJAPITester {
 		// Update a value in a Data Store
 		api.updateDataStore(DataStoreType.USER, "a_test_key", DataStoreOperation.APPEND, "lol");
 		
+		//get the Servertime
+		api.getServerTime();
 		
 	}
 	

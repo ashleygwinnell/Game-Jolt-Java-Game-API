@@ -41,7 +41,7 @@ public class GameJoltAPI
 	
 	private int gameId;
 	private String privateKey;
-	private int version = 1;
+	private String version = "1_2";
 	//private double version = 0.95;
 	
 	private String username;
@@ -92,7 +92,7 @@ public class GameJoltAPI
 	 * Set the version of the GameJolt API to use.
 	 * @param version The version of the GameJolt API to be using.
 	 */
-	public void setVersion(int version) {
+	public void setVersion(String version) {
 		this.version = version;
 	}
 	
@@ -100,7 +100,7 @@ public class GameJoltAPI
 	 * Get the version of the GameJolt API you are using. 
 	 * @return The API version in use.
 	 */
-	public double getVersion() {
+	public String getVersion() {
 		return version;
 	}	
 
@@ -369,7 +369,6 @@ public class GameJoltAPI
 			
 			if (verbose) {
 				System.out.println(response);
-				//System.out.println("numlines:" + response.split("\n").length);
 			}
 			
 			String[] lines = response.split("\n");
@@ -382,7 +381,6 @@ public class GameJoltAPI
 			}
 			Highscore h = null;
 			for (int i = 1; i < lines.length; i++) {
-				if (lines[i].contains("scores")) { break; }
 				String key = lines[i].substring(0, lines[i].indexOf(':'));
 				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
 				if (key.equals("score")) {
@@ -399,6 +397,156 @@ public class GameJoltAPI
 			return null;
 		}
 	}
+	/**
+	 * retrieve the Rank with the score closest to the given score.
+	 * @param score the score for which the rank should be retrieved
+	 * @return the closest rank to the score
+	 */
+	public int getHighscoreRank(int score){
+		String response = null;
+		
+		try {
+			HashMap<String, String> params = new HashMap<String, String>();
+			params.put("sort", String.valueOf(score)+this.privateKey);
+			String url = this.getRequestURL("scores/get-rank", params, false);
+
+			params.put("sort", String.valueOf(score));
+			params.put("signature", this.MD5(url));
+			url = this.getRequestURL("scores/get-rank", params, false);
+			if (verbose) {
+				System.out.println(url);
+			}
+			response = openURLAndGetResponse(url);
+			
+			if (verbose) {
+				System.out.println(response);
+			}
+			
+			String[] lines = response.split("\n");
+			if (!lines[0].trim().equals("success:\"true\"")) {
+				if (verbose) { 
+					System.err.println("GameJoltAPI: Could not get the Rank of the score."); 
+					System.err.println(response);
+				}
+				return -1;
+			}
+			
+			for (int i = 1; i < lines.length; i++) {
+				String key = lines[i].substring(0, lines[i].indexOf(':'));
+				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+				if (key.equals("rank")) {
+					return Integer.parseInt(value);
+				}
+			}
+			if (verbose){
+				System.err.println("the rank-entry is missing in the answer that was received.");
+			}
+			return -1;
+		} catch(Exception e) {
+			e.printStackTrace();
+			return -1;
+		}
+	}
+	/**
+	 * retrieve the Rank with the score closest to the given score.
+	 * @param score the score for which the rank should be retrieved
+	 * @param id the id of the HighscoreTable
+	 * @return the closest rank to the score
+	 */
+	public int getHighscoreRank(int score, int id){
+		String response = null;
+		
+		try {
+			HashMap<String, String> params = new HashMap<String, String>();
+			params.put("table_id", String.valueOf(id) + this.privateKey);
+			params.put("sort", String.valueOf(score));
+			String url = this.getRequestURL("scores/get-rank", params, false);
+
+			params.put("table_id", String.valueOf(id));
+			params.put("signature", this.MD5(url));
+			url = this.getRequestURL("scores/get-rank", params, false);
+			if (verbose) {
+				System.out.println(url);
+			}
+			response = openURLAndGetResponse(url);
+			
+			if (verbose) {
+				System.out.println(response);
+				//System.out.println("numlines:" + response.split("\n").length);
+			}
+			
+			String[] lines = response.split("\n");
+			if (!lines[0].trim().equals("success:\"true\"")) {
+				if (verbose) { 
+					System.err.println("GameJoltAPI: Could not get the Rank of the score."); 
+					System.err.println(response);
+				}
+				return -1;
+			}
+			
+			for (int i = 1; i < lines.length; i++) {
+				if (lines[i].contains("scores")) { break; }
+				String key = lines[i].substring(0, lines[i].indexOf(':'));
+				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+				if (key.equals("rank")) {
+					return Integer.parseInt(value);
+				}
+			}
+			if (verbose){
+				System.err.println("the rank-entry is missing in the answer that was received.");
+			}
+			return -1;
+		} catch(Exception e) {
+			e.printStackTrace();
+			return -1;
+		}
+	}
+	
+	public ArrayList<HighscoreTable> getHighscoreTables(){
+		String response = null;
+		ArrayList<HighscoreTable> tables = new ArrayList<>();
+		try {
+			HashMap<String, String> params = new HashMap<String, String>();
+			String url = this.getRequestURL("scores/tables", params, false,true);
+			
+			params.put("signature", this.MD5(url));
+			url = this.getRequestURL("scores/tables", params, false);
+			if (verbose) {
+				System.out.println(url);
+			}
+			response = openURLAndGetResponse(url);
+			
+			if (verbose) {
+				System.out.println(response);
+			}
+			
+			String[] lines = response.split("\n");
+			if (!lines[0].trim().equals("success:\"true\"")) {
+				if (verbose) { 
+					System.err.println("GameJoltAPI: Could not get the Tables."); 
+					System.err.println(response);
+				}
+				return null;
+			}
+			HighscoreTable t=null;
+			for (int i = 1; i < lines.length; i++) {
+				String key = lines[i].substring(0, lines[i].indexOf(':'));
+				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+				if (key.equals("id")) {
+					t = new HighscoreTable();
+				}
+				t.addProperty(key, value);
+				if (key.equals("stored")) {
+					tables.add(t);
+				}
+			}
+			return tables;
+		} catch(Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	
 	/**
 	 * Add a highscore for the currently verified Game Jolt user.
@@ -763,7 +911,6 @@ public class GameJoltAPI
 				return keys_list;
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
@@ -1052,6 +1199,45 @@ public class GameJoltAPI
 		return t;
 	}
 	
+
+	public void getServerTime(){
+		String response = null;
+		ServerTime time = new ServerTime();
+		try {
+			HashMap<String, String> params = new HashMap<String, String>();
+			String url = this.getRequestURL("get-time", params, false,true);
+			System.out.println(url);
+			params.put("signature", this.MD5(url));
+			url = this.getRequestURL("get-time", params, false);
+			if (verbose) {
+				System.out.println(url);
+			}
+			response = openURLAndGetResponse(url);
+			
+			if (verbose) {
+				System.out.println(response);
+			}
+			
+			String[] lines = response.split("\n");
+			if (!lines[0].trim().equals("success:\"true\"")) {
+				if (verbose) { 
+					System.err.println("GameJoltAPI: Could not get the ServerTime."); 
+					System.err.println(response);
+				}
+				return;
+			}
+			for (int i = 1; i < lines.length; i++) {
+				String key = lines[i].substring(0, lines[i].indexOf(':'));
+				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+				time.addProperty(key, value);
+			}
+			return;
+		} catch(Exception e) {
+			e.printStackTrace();
+			return;
+		}
+	}
+	
 	/**
 	 * Calculates an MD5 hash.
 	 * @param s The String you want the hash of.
@@ -1264,6 +1450,31 @@ public class GameJoltAPI
 		if (addUserToken) {
 			urlString += "&user_token=" + user_token;
 		}
+		
+		return urlString;
+	}
+	
+	private String getRequestURL(String method, HashMap<String, String> params, boolean addUserToken,boolean privateKey) throws UnsupportedEncodingException {
+		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
+		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
+		
+		Set<String> keyset = params.keySet();
+		Iterator<String> keys = keyset.iterator();
+		String user_token = "";
+		while (keys.hasNext()) {
+			String key = keys.next();
+			String value = params.get(key);
+			if (key.equals("user_token")) {
+				user_token = value;
+				continue;
+			}
+			urlString += "&" + key + "=" + URLEncoder.encode(value, "UTF-8");
+		}
+		if (addUserToken) {
+			urlString += "&user_token=" + user_token;
+		}
+		if (privateKey)
+			urlString+=this.privateKey;
 		
 		return urlString;
 	}
