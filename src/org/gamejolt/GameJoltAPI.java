@@ -68,8 +68,7 @@ public class GameJoltAPI
 		this.privateKey = privateKey;
 		File f = new File("gjapi-credentials.txt");
 		if (f.exists()) {
-			try {
-				Scanner sc = new Scanner(f);
+			try(Scanner sc = new Scanner(f)) {
 				this.quickplay_username = sc.nextLine();
 				this.quickplay_usertoken = sc.nextLine();
 				//this.verifyUser(username, usertoken);		
@@ -340,12 +339,12 @@ public class GameJoltAPI
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
 			if (all == true) { // all highscores
-				params.put("limit", (""+limit) + this.privateKey);
+				params.put("table_id", String.valueOf(id) + this.privateKey);
+				params.put("limit", (""+limit));
 				String url = this.getRequestURL("scores", params, false);
 				
-				params.put("limit", ""+limit);
-				params.put("signature", this.MD5(url));
 				params.put("table_id", String.valueOf(id));
+				params.put("signature", this.MD5(url));
 				url = this.getRequestURL("scores", params, false);
 				if (verbose) {
 					System.out.println(url);
@@ -356,6 +355,7 @@ public class GameJoltAPI
 				params.put("username", username);
 				params.put("user_token", usertoken+this.privateKey);  
 				params.put("limit", ""+limit);
+				params.put("table_id", String.valueOf(id));
 				String url = this.getRequestURL("scores", params, true);
 				
 				params.put("user_token", usertoken);  
@@ -991,9 +991,11 @@ public class GameJoltAPI
 			if (key.equals("id")) {
 				t = new Trophy();
 			}
-			t.addProperty(key, value);
-			if (key.equals("achieved")) {
-				trophies.add(t);
+			if (t!=null){
+				t.addProperty(key, value);
+				if (key.equals("achieved")) {
+					trophies.add(t);
+				}
 			}
 			
 		}

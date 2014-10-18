@@ -84,7 +84,7 @@ public class Trophy
 	 * @return True if the verified user has the Trophy.
 	 */
 	public boolean isAchieved() {
-		return Boolean.valueOf(this.getProperty("achieved"));
+		return !this.getProperty("achieved").equals("false");
 	}
 	
 	/**
