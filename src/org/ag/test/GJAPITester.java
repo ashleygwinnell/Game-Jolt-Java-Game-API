@@ -7,7 +7,6 @@ import org.gamejolt.DataStore.DataStoreOperation;
 import org.gamejolt.DataStore.DataStoreType;
 import org.gamejolt.GameJoltAPI;
 import org.gamejolt.Trophy;
-import org.gamejolt.User;
 
 public class GJAPITester {
 	
@@ -87,6 +86,9 @@ public class GJAPITester {
 		
 		// Update a value in a Data Store
 		api.updateDataStore(DataStoreType.USER, "a_test_key", DataStoreOperation.APPEND, "lol");
+		
+		//get a Data Store from
+		api.getDataStore(DataStoreType.USER, "a_test_key");
 		
 		//get the Servertime
 		api.getServerTime();

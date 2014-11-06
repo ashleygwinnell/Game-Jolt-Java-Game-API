@@ -151,7 +151,11 @@ public class GameJoltAPI
 		u.setToken(this.quickplay_usertoken);
 		return u;
 	}
-	
+	/**
+	 * gets the User object of the user with a certain name
+	 * @param name the name of the user
+	 * @return the Userobject of the user or null if no user with this name exists
+	 */
 	public User getUser(String name){
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put("username", name);
@@ -182,6 +186,11 @@ public class GameJoltAPI
 		}
 		return u;
 	}
+	/**
+	 * gets the User object of the user with a certain id
+	 * @param id the id of the user
+	 * @return the Userobject of the user or null if no user with this id exists
+	 */
 	public User getUser(int id){
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put("user_id", String.valueOf(id));
@@ -427,7 +436,10 @@ public class GameJoltAPI
 			return -1;
 		}
 	}
-	
+	/**
+	 * gets a List of all Highscoretables available for this game
+	 * @return a list of Highscoretables
+	 */
 	public ArrayList<HighscoreTable> getHighscoreTables(){
 		String response = null;
 		ArrayList<HighscoreTable> tables = new ArrayList<>();
@@ -625,33 +637,53 @@ public class GameJoltAPI
 	 * 	?user_token [empty|user_token] 
 	 * 	?key 
 	 */ 
+	/**
+	 * updates the data of an existing entry on the gamejolts servers by performing a {@link DataStoreOperation} between the data on the Server and the values
+	 * @param type the Type of the Data Store. Should be either DataTypeStore.USER or DataTypeStore.GAME.
+	 * @param keyhe key for which to store the data. You use this key to retrieve the DataStore.
+	 * @param operation the operation to perform on the entry
+	 * @param value
+	 * @return
+	 */
 	public DataStore updateDataStore(DataStoreType type, String key, DataStoreOperation operation, int value)
 	{
 		return updateDataStore(type, key, operation, ""+value);
 	}
 	public DataStore updateDataStore(DataStoreType type, String key, DataStoreOperation operation, String value) 
 	{
+		String response=null;
 		try {
 			if (type == DataStoreType.GAME) {
 				HashMap<String, String> params = new HashMap<String, String>();
 				params.put("operation", operation.toString().toLowerCase());
 				params.put("value", value);
 				params.put("key", ""+key);
+				params.put("format", "dump");
 				
-				String response = request("data-store/update/", params, false);
+				response = request("data-store/update/", params, false);
 				if (verbose) { System.out.println(response); }
 			
 			} else if (type == DataStoreType.USER) {
-				String response = this.request("data-store/update/", "key=" + key + "&operation=" + operation.toString().toLowerCase() + "&value=" + value);
+				HashMap<String, String> params = new HashMap<String, String>();
+				params.put("operation", operation.toString().toLowerCase());
+				params.put("value", value);
+				params.put("key", ""+key);
+				params.put("format", "dump");
+				response = request("data-store/update/", params, true);
+//				response = this.request("data-store/update/", "key=" + key + "&operation=" + operation.toString().toLowerCase() + "&value=" + value);
 				if (verbose) { 
 					System.out.println(response); 
 				}
 			}
 		} catch(Exception e) {
 			System.err.println("urg");
-			
+			return null;
 		}
-		return null;
+		DataStore ds = new DataStore();
+		ds.setKey(key);
+		ds.setData(response.substring(9));
+		ds.setType(type);
+		return ds;
 	}
 	
 	/**
@@ -669,7 +701,7 @@ public class GameJoltAPI
 			if (type == DataStoreType.GAME) {
 				HashMap<String, String> params = new HashMap<String, String>();
 				params.put("data", ""+data);
-				params.put("key", ""+key);
+				params.put("key", ""+key+this.privateKey);
 				
 				String url = this.getRequestURL("data-store/set", params, false);
 				params.put("key", key);
@@ -1328,8 +1360,8 @@ public class GameJoltAPI
 	private String getRequestURL(String method, HashMap<String, String> params, boolean addUserToken) throws UnsupportedEncodingException {
 		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
 		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
-
-		params.put("format", "keypair");
+		if (!params.containsKey("format"))
+			params.put("format", "keypair");
 		Set<String> keyset = params.keySet();
 		Iterator<String> keys = keyset.iterator();
 		String user_token = "";
