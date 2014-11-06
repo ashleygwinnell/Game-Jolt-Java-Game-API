@@ -679,6 +679,10 @@ public class GameJoltAPI
 			System.err.println("urg");
 			return null;
 		}
+		if (!response.substring(0, 7).equals("SUCCESS")) {
+			if (verbose) { System.err.println("could not update DataStore");}
+			return null;
+		} 
 		DataStore ds = new DataStore();
 		ds.setKey(key);
 		ds.setData(response.substring(9));
