@@ -152,6 +152,67 @@ public class GameJoltAPI
 		return u;
 	}
 	
+	public User getUser(String name){
+		HashMap<String, String> params = new HashMap<String, String>();
+		params.put("username", name);
+		
+		String response = request("users/", params, false);
+		if (verbose) { System.out.println(response); }
+		
+		String[] lines = response.split("\n");
+		if (!lines[0].trim().equals("success:\"true\"")) {
+			if (verbose) { 
+				System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
+				System.err.println(response);
+			}
+			return null;
+		}
+		
+		User u = new User();
+		for (int i = 1; i < lines.length; i++) {
+			String key = lines[i].substring(0, lines[i].indexOf(':'));
+			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+			if (key.equals("type")) {
+				u.setType(UserType.valueOf(value.toUpperCase()));
+			} else if (key.equals("status")) {
+				u.setStatus(UserStatus.valueOf(value.toUpperCase()));
+			} else {
+				u.addProperty(key, value);
+			}
+		}
+		return u;
+	}
+	public User getUser(int id){
+		HashMap<String, String> params = new HashMap<String, String>();
+		params.put("user_id", String.valueOf(id));
+		
+		String response = request("users/", params, false);
+		if (verbose) { System.out.println(response); }
+		
+		String[] lines = response.split("\n");
+		if (!lines[0].trim().equals("success:\"true\"")) {
+			if (verbose) { 
+				System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
+				System.err.println(response);
+			}
+			return null;
+		}
+		
+		User u = new User();
+		for (int i = 1; i < lines.length; i++) {
+			String key = lines[i].substring(0, lines[i].indexOf(':'));
+			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+			if (key.equals("type")) {
+				u.setType(UserType.valueOf(value.toUpperCase()));
+			} else if (key.equals("status")) {
+				u.setStatus(UserStatus.valueOf(value.toUpperCase()));
+			} else {
+				u.addProperty(key, value);
+			}
+		}
+		return u;
+	}
+	
 	/**
 	 * Return the User object if the user is verified, otherwise return null.
 	 * @return the User object if the user is verified, otherwise null.
@@ -1192,7 +1253,7 @@ public class GameJoltAPI
 				return "REQUIRES_AUTHENTICATION";
 			}
 			
-			if (!this.verified) {
+			if (!requireVerified) {
 				String user_token = params.get("user_token");
 				params.put("user_token", params.get("user_token") + privateKey);
 				String urlString = this.getRequestURL(method, params);
