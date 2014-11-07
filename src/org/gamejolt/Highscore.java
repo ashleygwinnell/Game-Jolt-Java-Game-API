@@ -108,7 +108,18 @@ public class Highscore
 		}
 		return Integer.parseInt(properties.get("user_id"));
 	}
-	
+	/**
+	 * If this is a user score, this returns the display name for the user.
+	 * If this is a guest score, this returns the guest's submitted name.
+	 * @return the name of the scorer
+	 */
+	public String getUsername() {
+		if (properties.get("user")==null){
+			return properties.get("guest");
+		}else{
+			return properties.get("user");
+		}
+	}
 	@Override
 	public String toString() {
 		return new String("Highscore [user_id=" + this.getUserId() + ", score=" + this.getScoreString() + "]");

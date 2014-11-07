@@ -42,6 +42,10 @@ public class GJAPITester {
 			System.err.println("Trophy was achieved, but is not marked achieved...");
 		}
 		
+		// get Userdata
+		api.getUser("CROS");
+		api.getUser(1);
+		
 		// Play Sessions
 		api.sessionOpen();
 		api.sessionCheck();
@@ -82,6 +86,9 @@ public class GJAPITester {
 		
 		// Update a value in a Data Store
 		api.updateDataStore(DataStoreType.USER, "a_test_key", DataStoreOperation.APPEND, "lol");
+		
+		//get a Data Store from
+		api.getDataStore(DataStoreType.USER, "a_test_key");
 		
 		//get the Servertime
 		api.getServerTime();

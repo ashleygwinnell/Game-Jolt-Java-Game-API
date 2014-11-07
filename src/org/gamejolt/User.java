@@ -60,6 +60,15 @@ public class User
 		this.properties.put("status", s.toString());
 	}
 	
+	public String getLastLoggedIn(){
+		return properties.get("last_logged_in");
+	}
+	public String getSignedUp(){
+		return properties.get("signed_up");
+	}
+	public int getId(){
+		return Integer.parseInt(properties.get("id"));
+	}
 	public String getName() {
 		return this.properties.get("username");
 	}

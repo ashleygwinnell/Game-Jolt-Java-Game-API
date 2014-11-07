@@ -14,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -72,7 +73,11 @@ public class GameJoltAPI
 				this.quickplay_username = sc.nextLine();
 				this.quickplay_usertoken = sc.nextLine();
 				//this.verifyUser(username, usertoken);		
-			} catch(FileNotFoundException exc) { }
+			} catch(FileNotFoundException exc) {
+			} catch(NoSuchElementException exc) {
+				if(verbose)
+					System.err.println(exc.getCause());
+			}
 		}
 	}
 		
@@ -139,16 +144,117 @@ public class GameJoltAPI
 		}
 		return true;
 	}
-	
+	/**
+	 * reloads the quickplay-file. This will reset the verified-status.
+	 * This should normally have no effect, since the quickplay-file is created when the user starts a quickplay-game, and not while the game is running.
+	 */
+	public void reloadQuickplay(){
+		File f = new File("gjapi-credentials.txt");
+		if (f.exists()) {
+			try(Scanner sc = new Scanner(f)) {
+				this.quickplay_username = sc.nextLine();
+				this.quickplay_usertoken = sc.nextLine();
+			} catch(FileNotFoundException exc) { }
+		}else{
+			this.quickplay_username = null;
+			this.quickplay_usertoken = null;
+		}
+		verified=false;
+	}
+	/**
+	 * Gets the user object of the quickplay user if the game has the gjapi-credentials.txt file.
+	 * if you only want to get the name and token, use {@link #getQuickplayUserCredientals()}
+	 * @return the User object if the game has the gjapi-credentials.txt file.
+	 */
+	public User getQuickplayUser(){
+		if (!hasQuickplay())
+			return null;
+		User u = getUser(quickplay_username);
+		u.setToken(quickplay_usertoken);
+		return u;
+	}
 	/**
 	 * Return the User object if the game has the gjapi-credentials.txt file.
 	 * Note that the User object returned will only have a name and token set!
 	 * @return the User object if the game has the gjapi-credentials.txt file.
 	 */
-	public User getQuickplayUser() {
+	public User getQuickplayUserCredientals() {
+		if (!hasQuickplay())return null;
 		User u = new User();
 		u.setName(this.quickplay_username);
 		u.setToken(this.quickplay_usertoken);
+		return u;
+	}
+	/**
+	 * gets the User object of the user with a certain name
+	 * This User will not have a token
+	 * @param name the name of the user
+	 * @return the Userobject of the user or null if no user with this name exists
+	 */
+	public User getUser(String name){
+		HashMap<String, String> params = new HashMap<String, String>();
+		params.put("username", name);
+		
+		String response = request("users/", params, false);
+		if (verbose) { System.out.println(response); }
+		
+		String[] lines = response.split("\n");
+		if (!lines[0].trim().equals("success:\"true\"")) {
+			if (verbose) { 
+				System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
+				System.err.println(response);
+			}
+			return null;
+		}
+		
+		User u = new User();
+		for (int i = 1; i < lines.length; i++) {
+			String key = lines[i].substring(0, lines[i].indexOf(':'));
+			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+			if (key.equals("type")) {
+				u.setType(UserType.valueOf(value.toUpperCase()));
+			} else if (key.equals("status")) {
+				u.setStatus(UserStatus.valueOf(value.toUpperCase()));
+			} else {
+				u.addProperty(key, value);
+			}
+		}
+		return u;
+	}
+	/**
+	 * gets the User object of the user with a certain id
+	 * This User will not have a token
+	 * @param id the id of the user
+	 * @return the Userobject of the user or null if no user with this id exists
+	 */
+	public User getUser(int id){
+		HashMap<String, String> params = new HashMap<String, String>();
+		params.put("user_id", String.valueOf(id));
+		
+		String response = request("users/", params, false);
+		if (verbose) { System.out.println(response); }
+		
+		String[] lines = response.split("\n");
+		if (!lines[0].trim().equals("success:\"true\"")) {
+			if (verbose) { 
+				System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
+				System.err.println(response);
+			}
+			return null;
+		}
+		
+		User u = new User();
+		for (int i = 1; i < lines.length; i++) {
+			String key = lines[i].substring(0, lines[i].indexOf(':'));
+			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+			if (key.equals("type")) {
+				u.setType(UserType.valueOf(value.toUpperCase()));
+			} else if (key.equals("status")) {
+				u.setStatus(UserStatus.valueOf(value.toUpperCase()));
+			} else {
+				u.addProperty(key, value);
+			}
+		}
 		return u;
 	}
 	
@@ -158,42 +264,7 @@ public class GameJoltAPI
 	 */
 	public User getVerifiedUser() {
 		if (this.verified) {
-			try {
-				HashMap<String, String> params = new HashMap<String, String>();
-				params.put("username", ""+this.username);
-				
-				String response = request("users/", params, false);
-				if (verbose) { System.out.println(response); }
-				
-				String[] lines = response.split("\n");
-				if (!lines[0].trim().equals("success:\"true\"")) {
-					if (verbose) { 
-						System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
-						System.err.println(response);
-					}
-					return null;
-				}
-				
-				User u = new User();
-				for (int i = 1; i < lines.length; i++) {
-					String key = lines[i].substring(0, lines[i].indexOf(':'));
-					String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-					if (key.equals("type")) {
-						u.setType(UserType.valueOf(value.toUpperCase()));
-					} else if (key.equals("status")) {
-						u.setStatus(UserStatus.valueOf(value.toUpperCase()));
-					} else {
-						u.addProperty(key, value);
-					}
-				}
-				u.setName(this.username);
-				u.setToken(this.usertoken);
-				return u;
-				
-			} catch (Exception e)  {
-				if (this.verbose) { System.err.println("GameJoltAPI: Could not get the (currently verified) user."); }
-				return null;
-			}
+			return getQuickplayUser();
 		}  else {
 			if (this.verbose) { System.err.println("GameJoltAPI: Could not get the (currently verified) user."); }
 			return null;
@@ -366,7 +437,10 @@ public class GameJoltAPI
 			return -1;
 		}
 	}
-	
+	/**
+	 * gets a List of all Highscoretables available for this game
+	 * @return a list of Highscoretables
+	 */
 	public ArrayList<HighscoreTable> getHighscoreTables(){
 		String response = null;
 		ArrayList<HighscoreTable> tables = new ArrayList<>();
@@ -564,33 +638,65 @@ public class GameJoltAPI
 	 * 	?user_token [empty|user_token] 
 	 * 	?key 
 	 */ 
+	/**
+	 * updates the data of an existing entry on the gamejolts servers by performing a {@link DataStoreOperation} between the data on the Server and the values
+	 * @param type the Type of the Data Store. Should be either DataTypeStore.USER or DataTypeStore.GAME.
+	 * @param keyhe key for which to store the data. You use this key to retrieve the DataStore.
+	 * @param operation the operation to perform on the entry
+	 * @param value
+	 * @return
+	 */
 	public DataStore updateDataStore(DataStoreType type, String key, DataStoreOperation operation, int value)
 	{
 		return updateDataStore(type, key, operation, ""+value);
 	}
+	/**
+	 * updates the data of an existing entry on the gamejolts servers by performing a {@link DataStoreOperation} between the data on the Server and the values
+	 * @param type the Type of the Data Store. Should be either DataTypeStore.USER or DataTypeStore.GAME.
+	 * @param keyhe key for which to store the data. You use this key to retrieve the DataStore.
+	 * @param operation the operation to perform on the entry
+	 * @param value
+	 * @return
+	 */
 	public DataStore updateDataStore(DataStoreType type, String key, DataStoreOperation operation, String value) 
 	{
+		String response=null;
 		try {
 			if (type == DataStoreType.GAME) {
 				HashMap<String, String> params = new HashMap<String, String>();
 				params.put("operation", operation.toString().toLowerCase());
 				params.put("value", value);
 				params.put("key", ""+key);
+				params.put("format", "dump");
 				
-				String response = request("data-store/update/", params, false);
+				response = request("data-store/update/", params, false);
 				if (verbose) { System.out.println(response); }
 			
 			} else if (type == DataStoreType.USER) {
-				String response = this.request("data-store/update/", "key=" + key + "&operation=" + operation.toString().toLowerCase() + "&value=" + value);
+				HashMap<String, String> params = new HashMap<String, String>();
+				params.put("operation", operation.toString().toLowerCase());
+				params.put("value", value);
+				params.put("key", ""+key);
+				params.put("format", "dump");
+				response = request("data-store/update/", params, true);
+//				response = this.request("data-store/update/", "key=" + key + "&operation=" + operation.toString().toLowerCase() + "&value=" + value);
 				if (verbose) { 
 					System.out.println(response); 
 				}
 			}
 		} catch(Exception e) {
 			System.err.println("urg");
-			
+			return null;
 		}
-		return null;
+		if (!response.substring(0, 7).equals("SUCCESS")) {
+			if (verbose) { System.err.println("could not update DataStore");}
+			return null;
+		} 
+		DataStore ds = new DataStore();
+		ds.setKey(key);
+		ds.setData(response.substring(9));
+		ds.setType(type);
+		return ds;
 	}
 	
 	/**
@@ -608,7 +714,7 @@ public class GameJoltAPI
 			if (type == DataStoreType.GAME) {
 				HashMap<String, String> params = new HashMap<String, String>();
 				params.put("data", ""+data);
-				params.put("key", ""+key);
+				params.put("key", ""+key+this.privateKey);
 				
 				String url = this.getRequestURL("data-store/set", params, false);
 				params.put("key", key);
@@ -928,10 +1034,8 @@ public class GameJoltAPI
 	 * @param t The Trophy to give.
 	 * @return true on successfully given trophy.
 	 */
-	public String achieveTrophy(Trophy t) {
-		String response = "";
-		response = this.request("trophies/add-achieved", "trophy_id=" + t.getId());
-		return response;
+	public boolean achieveTrophy(Trophy t) {
+		return achieveTrophy(Integer.parseInt(t.getId()));
 	}
 	
 	/**
@@ -1045,7 +1149,7 @@ public class GameJoltAPI
 	}
 	
 
-	public void getServerTime(){
+	public ServerTime getServerTime(){
 		String response = null;
 		ServerTime time = new ServerTime();
 		try {
@@ -1063,17 +1167,17 @@ public class GameJoltAPI
 					System.err.println("GameJoltAPI: Could not get the ServerTime."); 
 					System.err.println(response);
 				}
-				return;
+				return null;
 			}
 			for (int i = 1; i < lines.length; i++) {
 				String key = lines[i].substring(0, lines[i].indexOf(':'));
 				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
 				time.addProperty(key, value);
 			}
-			return;
+			return time;
 		} catch(Exception e) {
 			e.printStackTrace();
-			return;
+			return null;
 		}
 	}
 	
@@ -1192,7 +1296,7 @@ public class GameJoltAPI
 				return "REQUIRES_AUTHENTICATION";
 			}
 			
-			if (!this.verified) {
+			if (!requireVerified) {
 				String user_token = params.get("user_token");
 				params.put("user_token", params.get("user_token") + privateKey);
 				String urlString = this.getRequestURL(method, params);
@@ -1267,8 +1371,8 @@ public class GameJoltAPI
 	private String getRequestURL(String method, HashMap<String, String> params, boolean addUserToken) throws UnsupportedEncodingException {
 		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
 		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
-
-		params.put("format", "keypair");
+		if (!params.containsKey("format"))
+			params.put("format", "keypair");
 		Set<String> keyset = params.keySet();
 		Iterator<String> keys = keyset.iterator();
 		String user_token = "";
