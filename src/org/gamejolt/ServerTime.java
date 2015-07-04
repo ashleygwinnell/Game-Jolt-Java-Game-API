@@ -74,9 +74,16 @@ public class ServerTime {
 		return Integer.parseInt(properties.get("minute"));
 	}
 	/**
-	 * @return The year.
+	 * @return The seconds.
 	 */
 	public int getSeconds(){
 		return Integer.parseInt(properties.get("seconds"));
 	}
+        
+       @Override
+       public String toString() {
+           return "ServerTime [year=" + getYear() + ", month=" + getMonth() + 
+                   ", day=" + getDay() + ", hour=" + getHour() + ", minute=" + 
+                   getMinute() + ", seconds=" + getSeconds() + "]";
+       }
 }
