@@ -7,7 +7,7 @@ public class HighscoreTable {
 	private HashMap<String, String> properties;
 
 	/**
-	 * Create a new HighscoreTable with no properties.
+	 * Create a new HighscoreTable.
 	 */
 	HighscoreTable() {
 		properties = new HashMap<String, String>();

@@ -17,7 +17,7 @@ public class Highscore
 	private HashMap<String, String> properties;
 
 	/**
-	 * Create a new Highscore with no properties.
+	 * Create a new Highscore.
 	 */
 	Highscore() {
 		properties = new HashMap<String, String>();

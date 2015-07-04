@@ -22,7 +22,7 @@ public class Trophy
 	private HashMap<String, String> properties;
 	
 	/**
-	 * Create a new Trophy with no properties.
+	 * Create a new Trophy.
 	 */
 	Trophy() {
 		properties = new HashMap<String, String>();

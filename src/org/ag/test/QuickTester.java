@@ -2,7 +2,7 @@ package org.ag.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-//import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -112,7 +112,7 @@ public class QuickTester {
 	}
 	@Test
 	public void testGetHighscoreRank(){
-		//assertNotEquals(-1, api.getHighscoreRank(100));
+		assertNotEquals(-1, api.getHighscoreRank(100));
 	}
 	@Test
 	public void testAddHighscore(){
