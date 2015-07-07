@@ -11,46 +11,22 @@ import java.util.HashMap;
  * @since 0.96
  * @version 0.96
  */
-public class Highscore 
+public class Highscore extends PropertyContainer 
 {
-	/** The Highscore properties */
-	private HashMap<String, String> properties;
 
-	/**
-	 * Create a new Highscore.
-	 */
-	Highscore() {
-		properties = new HashMap<String, String>();
-	}
-	
-	/**
-	 * Adds a property to the Highscore.
-	 * @param key The key by which the property can be accessed.
-	 * @param value The value for the key.
-	 */
-	void addProperty(String key, String value) {
-		properties.put(key, value);
-	}
-	
-	/**
-	 * Gets a property of the Highscore that isn't specified by a specific method.
-	 * This exists for forward compatibility.
-	 * @param key The key of the Highscore attribute you want to obtain.
-	 * @return A property of the Highscore that isn't specified by a specific method.
-	 */
-	public String getProperty(String key) {
-		return properties.get(key);
-	}
-	
+        public Highscore(PropertyContainer other) {
+            super(other);
+        }
+        
 	/**
 	 * Retrieve the string value associated with the highscore. e.g. "5 Grapefruits".
 	 * @return the string value associated with the highscore. e.g. "5 Grapefruits".
 	 */
 	public String getScoreString() {
 		try {
-			return URLDecoder.decode(properties.get("score"), "UTF-8");
+			return URLDecoder.decode(getProperty("score"), "UTF-8");
 		} catch(Exception e) {
-			return properties.get("score");
+			return getProperty("score");
 		}
 	}
 	
@@ -59,7 +35,7 @@ public class Highscore
 	 * @return the integer value associated with the highscore. e.g. 5.
 	 */
 	public int getScoreValue() {
-		return Integer.parseInt(properties.get("sort"));
+		return Integer.parseInt(getProperty("sort"));
 	}
 	
 	/**
@@ -68,9 +44,9 @@ public class Highscore
 	 */
 	public String getExtraData() {
 		try {
-			return URLDecoder.decode(properties.get("extra_data"), "UTF-8");
+			return URLDecoder.decode(getProperty("extra_data"), "UTF-8");
 		} catch(Exception e) {
-			return properties.get("extra_data");
+			return getProperty("extra_data");
 		}
 	}
 	
@@ -79,7 +55,7 @@ public class Highscore
 	 * @return true if the Highscore was submitted by a Guest, otherwise false.
 	 */
 	public boolean isGuestHighscore() {
-		return (this.properties.get("guest").length() > 0);
+		return (getProperty("guest").length() > 0);
 	}
 	
 	/**
@@ -95,7 +71,7 @@ public class Highscore
 	 * @return The time that the highscore was submitted.
 	 */
 	public String getTime() {
-		return this.properties.get("stored");
+		return getProperty("stored");
 	}
 	
 	/**
@@ -103,10 +79,10 @@ public class Highscore
 	 * @return The User ID of the User that submitted the highscore. 
 	 */
 	public int getUserId() {
-		if (properties.get("user_id").length()==0) {
+		if (getProperty("user_id").length()==0) {
 			return -1;
 		}
-		return Integer.parseInt(properties.get("user_id"));
+		return Integer.parseInt(getProperty("user_id"));
 	}
 	/**
 	 * If this is a user score, this returns the display name for the user.
@@ -114,10 +90,10 @@ public class Highscore
 	 * @return the name of the scorer
 	 */
 	public String getUsername() {
-		if (properties.get("user")==null){
-			return properties.get("guest");
+		if (getProperty("user")==null){
+			return getProperty("guest");
 		}else{
-			return properties.get("user");
+			return getProperty("user");
 		}
 	}
 	@Override
