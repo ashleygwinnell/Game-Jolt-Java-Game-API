@@ -14,14 +14,14 @@ public class GJAPITester {
 	public static void main(String[] args) {
 		
 		// Define these variables yourself! 
-		final int GAME_ID = 77473;
-		final String GAME_SECRET = "a1a11ce3cb62ab5ee9d9de87ef52d3e6";
+		final int GAME_ID = 1;
+		final String GAME_SECRET = "";
 		
-		final String USER_NAME = "TheColorMan";
-		final String USER_TOKEN = "j3j22493";
+		final String USER_NAME = "";
+		final String USER_TOKEN = "";
 		
-		final int TROPHY_ID= 33637;
-		final int TABLE_ID = 80259;
+		final int TROPHY_ID= 1;
+		final int TABLE_ID = 1;
 		
 		// Initialise Game Jolt API
 		GameJoltAPI api = new GameJoltAPI(GAME_ID, GAME_SECRET);
