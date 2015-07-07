@@ -66,15 +66,21 @@ public abstract class GameJoltResponseParser {
      * @return The new ServerTime object, or null if there was an error
      */
     public ServerTime parseServerTimeResponse(String response) {
+        if (!isSuccessful(response)) {
+            return null;
+        }
         return new ServerTime(parsePropertiesFrom(response, getServerTimeProperties()));
     }
     
     /**
      * Create a Trophy object from a GameJolt response
      * @param response The response from GameJolt
-     * @return The new Trophy object, or null if there was an error
+     * @return The new Trophy object, or null if there was an error or it wasn't successful
      */
     public ArrayList<Trophy> parseTrophyResponse(String response) {
+        if (!isSuccessful(response)) {
+            return null;
+        }
         ArrayList<PropertyContainer> containers = parsePropertiesFromArray(response, "trophies", getTrophyProperties());
         ArrayList<Trophy> trophies = new ArrayList<>();
         for (PropertyContainer pc : containers) {
@@ -93,10 +99,14 @@ public abstract class GameJoltResponseParser {
     /**
      * Get a list of HighscoreTables from a GameJolt response
      * @param response The response from GameJolt
-     * @return A list of all the keys returned (this could be an empty array)
+     * @return A list of all the keys returned (this could be an empty array). If
+     * the request is not successful, this returns null.
      */
     public ArrayList<HighscoreTable> parseHighscoreTableResponse(String response) {
-        ArrayList<PropertyContainer> containers = parsePropertiesFromArray(response, "tables", getHighscoreProperties());
+        if (!isSuccessful(response)) {
+            return null;
+        }
+        ArrayList<PropertyContainer> containers = parsePropertiesFromArray(response, "tables", getHighscoreTableProperties());
         ArrayList<HighscoreTable> tables = new ArrayList<>();
         for (PropertyContainer pc : containers) {
             tables.add(new HighscoreTable(pc));
@@ -117,6 +127,9 @@ public abstract class GameJoltResponseParser {
      * @return A list of all the highscores parsed from the response (this could be empty)
      */
     public ArrayList<Highscore> parseHighscoreResponse(String response) {
+        if (!isSuccessful(response)) {
+            return null;
+        }
         ArrayList<PropertyContainer> containers = parsePropertiesFromArray(response, "scores", getHighscoreProperties());
         ArrayList<Highscore> highscores = new ArrayList<>();
         for (PropertyContainer pc : containers) {

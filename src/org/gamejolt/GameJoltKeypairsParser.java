@@ -70,6 +70,9 @@ public class GameJoltKeypairsParser extends GameJoltResponseParser {
     @Override
     public ArrayList<String> parseDatastoresKeysResponse(String response) {
         String[] lines = response.split("\n");
+        if (!isSuccessful(lines)) {
+            return null;
+        }
         ArrayList<String> keys_list = new ArrayList<>();
         for (int i = 1; i < lines.length; i++) {
                 keys_list.add(lines[i].substring(lines[i].indexOf('"')+1, lines[i].lastIndexOf('"')));
@@ -81,11 +84,7 @@ public class GameJoltKeypairsParser extends GameJoltResponseParser {
     public int parseHighscoreRankResponse(String response) {
         String[] lines = response.split("\n");
         if (!isSuccessful(lines)) {
-                /*if (verbose) { 
-                        System.err.println("GameJoltAPI: Could not get the Rank of the score."); 
-                        System.err.println(response);
-                }*/
-                return -1;
+            return -1;
         }
 
         for (int i = 1; i < lines.length; i++) {
