@@ -43,9 +43,25 @@ public class GameJoltAPI
 	private final String api_root = new String("gamejolt.com/api/game/");
 	//private final String api_root = new String("gamejoltdevash.dyndns.org/api/game/");
 	
-        public enum Format {XML, JSON, KEYPAIRS};
-        // the format the request's responses will be in
-        public Format format = Format.KEYPAIRS;
+        public enum Format {
+            XML, 
+            JSON, 
+            KEYPAIRS;
+            
+            
+            public GameJoltResponseParser getParser(){
+                if (this == XML) {
+                    return new GameJoltXMLParser();
+                } else if (this == JSON) {
+                    return new GameJoltJSONParser();
+                } 
+                return new GameJoltKeypairsParser(); // default type
+            }        
+        };
+        
+        // the parser used for responses
+        private GameJoltResponseParser parser;
+        public Format format;
         
 	private int gameId;
 	private String privateKey;
@@ -60,7 +76,7 @@ public class GameJoltAPI
 	
 	private boolean verbose = false;
 	private boolean verified = false;
-	
+        
 	/**
 	 * Create a new GameJoltAPI object without trying to verify the user.
 	 * 
@@ -86,6 +102,9 @@ public class GameJoltAPI
 					System.err.println(exc.getCause());
 			}
 		}
+                // the initial parser
+                format = Format.KEYPAIRS;
+                parser = format.getParser();
 	}
 		
 	/**
@@ -225,48 +244,12 @@ public class GameJoltAPI
 		if (verbose) { System.out.println(response); }
 		
                 try {
-                        PropertyContainer container = null;
-                        switch (format) {
-                            case KEYPAIRS:
-                                // TODO keypairs formmat
-                                String[] lines = response.split("\n");
-                                User uKeypairs = new User();
-                                for (int i = 1; i < lines.length; i++) {
-                                    String key = lines[i].substring(0, lines[i].indexOf(':'));
-                                    String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-                                    if (key.equals("type")) {
-                                            uKeypairs.setType(UserType.valueOf(value.toUpperCase()));
-                                    } else if (key.equals("status")) {
-                                            uKeypairs.setStatus(UserStatus.valueOf(value.toUpperCase()));
-                                    } else {
-                                            uKeypairs.addProperty(key, value);
-                                    }
-                                }
-                                return uKeypairs;
-                            case JSON:
-                                JSONObject resp = parseResponseStringJSON(response);
-                                container = parsePropertiesFromJSON(resp, new String[]{
-                                    "id", 
-                                    "username",
-                                    "avatar_url",
-                                    "signed_up",
-                                    "last_logged_in",
-                                });
-                                User uJSON = new User(container);
-                                uJSON.setType(UserType.valueOf(resp.get("type").toString()));
-                                uJSON.setStatus(UserStatus.valueOf(resp.get("status").toString()));
-                                return uJSON;
-                            case XML:
-                                
-                                break;
-                        }
-
-                        if (container == null && verbose) { 
-                                System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
-                                System.err.println(response);
-                        }
-                        return null;
-
+                    User u = parser.parseUserRequestResponse(response);
+                    if (verbose && u == null) { 
+                            System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
+                            System.err.println(response);
+                    }
+                    return u;
                 } catch (Exception pe) {
                     pe.printStackTrace();
                     return null;
@@ -349,7 +332,6 @@ public class GameJoltAPI
 			if (verbose) { System.err.println("GameJoltAPI: Could not get the Highscores for the verified user as the user is not verified."); }
 			return null; 
 		}
-		ArrayList<Highscore> highscores = new ArrayList<Highscore>();
 		String response = null;
 		
 		try {
@@ -371,26 +353,8 @@ public class GameJoltAPI
 			if (verbose) {
 				System.out.println(response);
 			}
-			
-                        try {
-                            ArrayList<PropertyContainer> containers = 
-                                parsePropertiesFromArray(response, "scores" , 
-                                    new String[]{
-                                        "score", 
-                                        "extra_data",
-                                        "user",
-                                        "user_id",
-                                        "guest",
-                                        "stored"
-                                    });
-                            for (PropertyContainer pc : highscores) {
-                                highscores.add(new Highscore(pc));
-                            }
-                            return highscores;
-                        } catch (Exception pe) {
-                            pe.printStackTrace();
-                            return null;
-                        }
+                        
+                        return parser.parseHighscoreResponse(response);
 		} catch(Exception e) {
 			e.printStackTrace();
 			return null;
@@ -427,48 +391,7 @@ public class GameJoltAPI
 				System.out.println(response);
 			}
                         
-                        Highscore h = null;
-                        switch (format) {
-                            case KEYPAIRS:
-                                String[] lines = response.split("\n");
-                                if (!isSuccessfulKEYPAIRS(lines)) {
-                                        if (verbose) { 
-                                                System.err.println("GameJoltAPI: Could not get the Rank of the score."); 
-                                                System.err.println(response);
-                                        }
-                                        return -1;
-                                }
-
-                                for (int i = 1; i < lines.length; i++) {
-                                        if (lines[i].contains("scores")) { break; }
-                                        String key = lines[i].substring(0, lines[i].indexOf(':'));
-                                        String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-                                        if (key.equals("rank")) {
-                                                return Integer.parseInt(value);
-                                        }
-                                }
-                                if (verbose){
-                                        System.err.println("the rank-entry is missing in the answer that was received.");
-                                }
-                                return -1;
-                            case JSON:
-                                h = new Highscore(parsePropertiesFrom(response, 
-                                    new String[]{"rank"}));
-                                break;
-                            case XML:
-                                
-                                break;
-                        }
-
-                        if (h != null) {
-                            return Integer.parseInt(h.getProperty("rank"));
-                        } else {
-                            if (verbose) { 
-                                System.err.println("GameJoltAPI: Could not get the Highscores."); 
-                                System.err.println(response);
-                            }
-                            return -1;
-                        }
+                        return parser.parseHighscoreRankResponse(response);
                 } catch (Exception pe) {
                     pe.printStackTrace();
                     return -1;
@@ -489,20 +412,7 @@ public class GameJoltAPI
 				System.out.println(response);
 			}
 			
-                        ArrayList<PropertyContainer> containers = 
-                            parsePropertiesFromArray(response, "tables", new String[]{
-                                "id", 
-                                "name",
-                                "description",
-                                "primary",
-                        });
-
-                        // convert all of the properties to trophies
-                        for (PropertyContainer pc : containers) {
-                            tables.add(new HighscoreTable(pc));
-                        }
-                        return tables;
-                        
+                        return parser.parseHighscoreTableResponse(response);
                 } catch (Exception pe) {
                     pe.printStackTrace();
                 }
@@ -566,7 +476,7 @@ public class GameJoltAPI
 			response = request("scores/add",params,true);
 			if (verbose) { System.out.println(response); }
 			
-			if (!isSuccessful(response)  || response.equals("REQUEST_FAILED")) {
+			if (!parser.isSuccessful(response)  || response.equals("REQUEST_FAILED")) {
 				if (verbose) { System.err.println("GameJoltAPI: Could not add the High Score."); }
 				if (verbose) { System.out.println(response); }
 				return false;
@@ -631,7 +541,7 @@ public class GameJoltAPI
 			
 			response = request("scores/add", params, false);
 			if (verbose) { System.out.println(response); }
-			if (!isSuccessful(response) || response.equals("REQUEST_FAILED")) {
+			if (!parser.isSuccessful(response) || response.equals("REQUEST_FAILED")) {
 				if (verbose) { System.err.println("GameJoltAPI: Could not add the Guest High Score."); }
 				if (verbose && response.contains("Guests are not allowed to enter scores for this game.")) { // TODO: optimisation.
 					System.err.println("Guests are not allowed to enter scores for this game.");
@@ -795,8 +705,7 @@ public class GameJoltAPI
 			if (verbose) { System.out.println(response); }
 			
 		}
-		if (isSuccessful(response)
-				|| parseResponseStringJSON(response).get("message").equals("There is no item with the key passed in.")) {
+		if (!parser.isSuccessful(response)) {
 			if (verbose) { System.err.println("GameJoltAPI: Could not get " + type + " DataStore with Key \"" + key + "\"."); }
 			if (verbose) { System.out.println(response); }
 			
@@ -845,28 +754,8 @@ public class GameJoltAPI
                                 response = this.request("data-store/get-keys", "");
                         }
                         if (verbose) { System.out.println(response); } 
-                        
-                        switch (format) {
-                            case KEYPAIRS:
-                                // TODO keypairs
-                                break;
-                            case JSON:
-                                JSONObject resp = parseResponseStringJSON(response);
-                                if (!isSuccessfulJSON(resp)) {
-                                        if (verbose) { System.err.println("GameJoltAPI: Could not get " + type + " DataStores."); }
-                                        return null;
-                                }
-                                JSONArray keys = (JSONArray)resp.get("keys");
-                                for (Object o : keys) {
-                                    keys_list.add(((JSONObject)o).get("key").toString());
-                                }
-                                break;
-                            case XML:
-                                // TODO xml
-                                break;
-                        }
-                        
-                        return keys_list;
+
+                        return parser.parseDatastoresKeysResponse(response);
                 } catch(Exception e) {
                     if (verbose) { 
                             System.err.println("GameJoltAPI: Error while getting trophies"); 
@@ -947,7 +836,7 @@ public class GameJoltAPI
 		String response = "";
 		response = this.request("sessions/open/", "");
 		if (this.verbose) { System.out.println(response); } 
-		if (isSuccessful(response)) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -970,7 +859,7 @@ public class GameJoltAPI
 		}
 		String response = this.request("sessions/check/", "");
 		if (this.verbose) { System.out.println(response); }
-		if (isSuccessful(response)) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		}else{
 			if (verbose) {
@@ -1017,7 +906,7 @@ public class GameJoltAPI
 		}
 		String response = this.request("sessions/ping/", params);
 		if (this.verbose) { System.out.println(response); }
-		if (isSuccessful(response)) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -1045,7 +934,7 @@ public class GameJoltAPI
 		}
 		String response = this.request("sessions/close/", "");
 		if (this.verbose) { System.out.println(response); }
-		if (isSuccessful(response)) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -1073,7 +962,7 @@ public class GameJoltAPI
 	 */
 	public boolean achieveTrophy(int trophyId) {
 		String response = this.request("trophies/add-achieved", "trophy_id=" + trophyId);
-		if (isSuccessful(response)) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -1105,31 +994,14 @@ public class GameJoltAPI
 		String response = this.request("trophies/", "achieved=" + a.toString().toLowerCase());
 		
                 try {
-                    
- 
-                    ArrayList<PropertyContainer> containers = 
-                            parsePropertiesFromArray(response, "trophies", new String[]{
-                            "id",
-                            "title",
-                            "description",
-                            "difficulty",
-                            "image_url",
-                            "achieved"
-                    });
-
-                    // convert all of the properties to trophies
-                    for (PropertyContainer pc : containers) {
-                        trophies.add(new Trophy(pc));
-                    }
-
-                
+                    return parser.parseTrophyResponse(response);
                 } catch(Exception e) {
                     if (verbose) { 
                             System.err.println("GameJoltAPI: Error while getting trophies"); 
                             e.printStackTrace();
                     }
                 }
-		return trophies;
+                return null;
 	}
 	
 	/**
@@ -1140,21 +1012,14 @@ public class GameJoltAPI
 	public Trophy getTrophy(int trophyId) {
 		String response = this.request("trophies/", "trophy_id=" + trophyId);
                 try {
-                    ArrayList<PropertyContainer> containers = parsePropertiesFromArray(response, "trophies", new String[]{
-                            "id",
-                            "title",
-                            "description",
-                            "difficulty",
-                            "image_url",
-                            "achieved"
-                        });
-                    if (containers.isEmpty()) {
+                    ArrayList<Trophy> trophies = parser.parseTrophyResponse(response);
+                    if (trophies.isEmpty()) {
                         if (verbose) { 
                                 System.err.println("GameJoltAPI: No such trophies with the ID " + trophyId + " exists"); 
                         }
                         return null;
                     } else {
-                        return new Trophy(containers.get(0));
+                        return trophies.get(0);
                     }
                 } catch(Exception e) {
                     if (verbose) { 
@@ -1176,15 +1041,7 @@ public class GameJoltAPI
 				System.out.println(response);
 			}
 
-                        return new ServerTime(parsePropertiesFrom(response,
-                            new String[]{
-                            "year",
-                            "month",
-                            "day",
-                            "hour",
-                            "minute",
-                            "seconds"
-                        }));
+                        return parser.parseServerTimeResponse(response);
                 } catch(Exception e) {
                     if (verbose) { 
                             System.err.println("GameJoltAPI: Could not get the ServerTime."); 
@@ -1237,7 +1094,7 @@ public class GameJoltAPI
                 String response = this.request("users/auth/", params, false);
                 if (verbose) { System.out.println(response); }
 
-                if (isSuccessful(response)) {
+                if (parser.isSuccessful(response)) {
                     this.username = username;
                     this.usertoken = userToken;
                     this.verified = true;
@@ -1422,173 +1279,7 @@ public class GameJoltAPI
          */
         public void setFormat(Format format) {
             this.format = format;
+            this.parser = format.getParser();
         }
-        
-        /**
-         * Takes a string of json text that was returned as a response of a request, and 
-         * will return whether or not it's successful.
-         * @param response The string of json text returned as a response of a request
-         * @return Whether or not the message is sucessful, or false if there was an error parsing.
-         */
-        private boolean isSuccessful(String responseText) {
-            switch (format) {
-                case KEYPAIRS:
-                    return isSuccessfulKEYPAIRS(responseText.split("\n"));
-                case JSON:
-                    JSONObject response = parseResponseStringJSON(responseText);
-                    if (response == null)
-                        return false;
 
-                    return isSuccessfulJSON(response);
-                case XML:
-                    // TODO: add xml format
-                    break;
-            }
-            return false;
-        }
-        
-        /**
-         * Check if a response is successful or not
-         * @param response The "response" object returned as a response to a request
-         * @return Whether or not the response is a success
-         */
-        private boolean isSuccessfulJSON(JSONObject response) {
-            return response.get("success").toString().equals("true");
-        }
-        
-        /**
-         * Parses text returned as a response to a request into a JSONObject.
-         * @param responseText The string returned as a response to a request in a JSON format.
-         * @return The parsed response object. If there was an error while parsing, it returns null.
-         */
-        private JSONObject parseResponseStringJSON(String responseText) {
-            try {
-                    JSONParser parser = new JSONParser();
-                    return (JSONObject)((JSONObject)(parser.parse(responseText))).get("response");
-            } catch (Exception e) {
-                if (verbose) { System.err.println("GameJoltAPI: Error when parsing text into a JSONObject"); }
-                e.printStackTrace();
-            }
-            return null;
-        }
-        
-        /**
-         * Check if a response is successful or not
-         * @param lines The response text in the KEYPAIRS format, split between new lines.
-         * @return Whether or not the response is successful.
-         */
-        private boolean isSuccessfulKEYPAIRS(String[] lines) {
-            return lines[0].trim().equals("success:\"true\"");
-        }
-        
-        /**
-         * Takes a string, then parses the given properties out of the string
-         * using the current format
-         * @param response The raw response string
-         * @param properties The list of the properties to parse out. if the KEYPAIRS 
-         * format is the current format, this list is ignored
-         * @return The PropertyContainer object will all the properties in the list
-         * that it could find, or null if there was an error.
-         */
-        private PropertyContainer parsePropertiesFrom(String response, String[] properties) {
-            PropertyContainer container = new PropertyContainer();
-            switch(format) {
-                case KEYPAIRS:
-                    String[] lines = response.split("\n");
-                    for (int i = 1; i < lines.length; i++) {
-			String key = lines[i].substring(0, lines[i].indexOf(':'));
-			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-                        container.addProperty(key, value);
-                    }
-                    return container;
-                case JSON:
-                    return parsePropertiesFromJSON(parseResponseStringJSON(response), properties);
-                case XML:
-                    // TODO xml single parse
-                    
-                    return null;
-            }
-            return null;
-        }
-        
-        /**
-         * Takes a string, then parses the given properties out of the string
-         * using a JSONObject
-         * @param response The raw response string
-         * @param properties The list of the properties to parse out.
-         * @return The PropertyContainer object will all the properties in the list
-         * that it could find, or null if there was an error.
-         */
-        private PropertyContainer parsePropertiesFromJSON(JSONObject response, String[] properties) {
-            PropertyContainer container = new PropertyContainer();
-            for (String str : properties) {
-                container.addProperty(str, response.get(str).toString());
-            }
-            return container;
-        }
-        
-        /**
-         * Takes a string, then pareses many containers out of it, interpreting it as a 
-         * large list.
-         * @param response The raw response string
-         * @param properties The list of the properties to parse out.
-         * @param arrayName The name of the array to parse out. This is only needed
-         *      for JSON or XML formats.
-         * @return THe list of all the PropertyContainer from the array. If there
-         * was an error or if the array that was parsed is empty, then an empty array is returned.
-         */
-        private ArrayList<PropertyContainer> parsePropertiesFromArray(String response, 
-                String arrayName, String[] properties) {
-            ArrayList<PropertyContainer> containers = new ArrayList<>();
-            switch(format) {
-                case KEYPAIRS:
-                    String startKey = ""; // the key that passes when we know a new element is starting
-                    String[] lines = response.split("\n");
-                    if (verbose) {
-                        System.out.println(response);
-                    }
-                    PropertyContainer container = null;
-                    for (int i = 1; i < lines.length; i++) {
-                        String key = lines[i].substring(0, lines[i].indexOf(':'));
-                        String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-                        if (i == 1) {
-                            startKey = key;
-                        }
-                        if (key.equals(startKey)) {
-                            // new element
-                            if (container != null) {
-                                containers.add(container); // add the container that is now done
-                            }
-                            container = new PropertyContainer();
-                        }
-                        
-                        if (container != null) {
-                            container.addProperty(key, value);
-                        }
-                    }
-                    // add the final container if there is any
-                    if (container != null) {
-                        containers.add(container); // add the container that is now done
-                    }
-                    break;
-                case JSON:
-                    JSONObject resp = parseResponseStringJSON(response);
-                    if (!isSuccessfulJSON(resp)) {
-                        if (verbose) { System.err.println("GameJoltAPI: Unsuccessful response when parsing the " + arrayName + "array."); }
-                        return containers;
-                    }
-                    // get all the elements in the JSONArray list
-                    JSONArray entries = (JSONArray)resp.get(arrayName);
-                        for (Object o : entries) {
-                            // parse eam element in the JSON array, and add it to the list of containers
-                            containers.add(parsePropertiesFromJSON((JSONObject) o, properties));
-                        }
-                    break;
-                case XML:
-                    // TODO xml array parse
-                    break;
-            }
-            
-            return containers;
-        }
 }

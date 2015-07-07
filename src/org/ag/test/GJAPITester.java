@@ -21,7 +21,7 @@ public class GJAPITester {
 		final String USER_TOKEN = "";
 		
 		final int TROPHY_ID= 1;
-		final int TABLE_ID = 1;
+		final int TABLE_ID = 0;
 		
 		// Initialise Game Jolt API
 		GameJoltAPI api = new GameJoltAPI(GAME_ID, GAME_SECRET);
