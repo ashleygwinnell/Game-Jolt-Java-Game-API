@@ -18,7 +18,7 @@ public class GJAPITester {
 		final String GAME_SECRET = "a1a11ce3cb62ab5ee9d9de87ef52d3e6";
 		
 		final String USER_NAME = "TheColorMan";
-		final String USER_TOKEN = "9271c1";
+		final String USER_TOKEN = "j3j22493";
 		
 		final int TROPHY_ID= 33637;
 		final int TABLE_ID = 80259;

@@ -26,7 +26,6 @@ import org.gamejolt.User.UserType;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 /**
  * <b>GameJoltAPI</b><br/>
@@ -46,7 +45,7 @@ public class GameJoltAPI
 	
         public enum Format {XML, JSON, KEYPAIRS};
         // the format the request's responses will be in
-        public Format format = Format.JSON;
+        public Format format = Format.KEYPAIRS;
         
 	private int gameId;
 	private String privateKey;
@@ -230,7 +229,20 @@ public class GameJoltAPI
                         switch (format) {
                             case KEYPAIRS:
                                 // TODO keypairs formmat
-                                break;
+                                String[] lines = response.split("\n");
+                                User uKeypairs = new User();
+                                for (int i = 1; i < lines.length; i++) {
+                                    String key = lines[i].substring(0, lines[i].indexOf(':'));
+                                    String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+                                    if (key.equals("type")) {
+                                            uKeypairs.setType(UserType.valueOf(value.toUpperCase()));
+                                    } else if (key.equals("status")) {
+                                            uKeypairs.setStatus(UserStatus.valueOf(value.toUpperCase()));
+                                    } else {
+                                            uKeypairs.addProperty(key, value);
+                                    }
+                                }
+                                return uKeypairs;
                             case JSON:
                                 JSONObject resp = parseResponseStringJSON(response);
                                 container = parsePropertiesFromJSON(resp, new String[]{
@@ -240,10 +252,10 @@ public class GameJoltAPI
                                     "signed_up",
                                     "last_logged_in",
                                 });
-                                User u = new User(container);
-                                u.setType(UserType.valueOf(resp.get("type").toString()));
-                                u.setStatus(UserStatus.valueOf(resp.get("status").toString()));
-                                return u;
+                                User uJSON = new User(container);
+                                uJSON.setType(UserType.valueOf(resp.get("type").toString()));
+                                uJSON.setStatus(UserStatus.valueOf(resp.get("status").toString()));
+                                return uJSON;
                             case XML:
                                 
                                 break;
@@ -1094,30 +1106,22 @@ public class GameJoltAPI
 		
                 try {
                     
-                switch (format) {
-                    case KEYPAIRS:
-                        // TODO Keypairs format
-                        return null;
-                    case JSON:
-                        ArrayList<PropertyContainer> containers = 
-                                parsePropertiesFromArray(response, "trophies", new String[]{
-                                "id",
-                                "title",
-                                "description",
-                                "difficulty",
-                                "image_url",
-                                "achieved"
-                        });
-                        
-                        // convert all of the properties to trophies
-                        for (PropertyContainer pc : containers) {
-                            trophies.add(new Trophy(pc));
-                        }
-                        break;
-                    case XML:
-                        // TODO XML format
-                        return null;
-                }
+ 
+                    ArrayList<PropertyContainer> containers = 
+                            parsePropertiesFromArray(response, "trophies", new String[]{
+                            "id",
+                            "title",
+                            "description",
+                            "difficulty",
+                            "image_url",
+                            "achieved"
+                    });
+
+                    // convert all of the properties to trophies
+                    for (PropertyContainer pc : containers) {
+                        trophies.add(new Trophy(pc));
+                    }
+
                 
                 } catch(Exception e) {
                     if (verbose) { 
@@ -1136,23 +1140,21 @@ public class GameJoltAPI
 	public Trophy getTrophy(int trophyId) {
 		String response = this.request("trophies/", "trophy_id=" + trophyId);
                 try {
-                    switch(format) {
-                        case KEYPAIRS:
-                            // TODO Keypairs format
-                            return null;
-                        case JSON:
-                        // parse the list of tropies as an array, then return the first trophy
-                        return new Trophy((parsePropertiesFromArray(response, "trophies", new String[]{
+                    ArrayList<PropertyContainer> containers = parsePropertiesFromArray(response, "trophies", new String[]{
                             "id",
                             "title",
                             "description",
                             "difficulty",
                             "image_url",
                             "achieved"
-                        }).get(0))); // there should only be one trophy
-                        case XML:
-                            // TODO XML format
-                            return null;
+                        });
+                    if (containers.isEmpty()) {
+                        if (verbose) { 
+                                System.err.println("GameJoltAPI: No such trophies with the ID " + trophyId + " exists"); 
+                        }
+                        return null;
+                    } else {
+                        return new Trophy(containers.get(0));
                     }
                 } catch(Exception e) {
                     if (verbose) { 
@@ -1304,10 +1306,10 @@ public class GameJoltAPI
 			}
                         
                         // explicitly defining the format parameter overrides the current format
-                        if (params.get("format") == null) {
+                        if (!params.containsKey("format")) {
                             switch (format) {
                                 case KEYPAIRS:
-                                    params.put("format", "keypairs");
+                                    params.put("format", "keypair");
                                     break;
                                 case JSON:
                                     params.put("format", "json");
@@ -1483,7 +1485,8 @@ public class GameJoltAPI
          * Takes a string, then parses the given properties out of the string
          * using the current format
          * @param response The raw response string
-         * @param properties The list of the properties to parse out.
+         * @param properties The list of the properties to parse out. if the KEYPAIRS 
+         * format is the current format, this list is ignored
          * @return The PropertyContainer object will all the properties in the list
          * that it could find, or null if there was an error.
          */
@@ -1491,12 +1494,18 @@ public class GameJoltAPI
             PropertyContainer container = new PropertyContainer();
             switch(format) {
                 case KEYPAIRS:
-                    // TODO keypairs single parse
-                    return null;
+                    String[] lines = response.split("\n");
+                    for (int i = 1; i < lines.length; i++) {
+			String key = lines[i].substring(0, lines[i].indexOf(':'));
+			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+                        container.addProperty(key, value);
+                    }
+                    return container;
                 case JSON:
                     return parsePropertiesFromJSON(parseResponseStringJSON(response), properties);
                 case XML:
                     // TODO xml single parse
+                    
                     return null;
             }
             return null;
@@ -1504,7 +1513,7 @@ public class GameJoltAPI
         
         /**
          * Takes a string, then parses the given properties out of the string
-         * using the current format
+         * using a JSONObject
          * @param response The raw response string
          * @param properties The list of the properties to parse out.
          * @return The PropertyContainer object will all the properties in the list
@@ -1533,7 +1542,34 @@ public class GameJoltAPI
             ArrayList<PropertyContainer> containers = new ArrayList<>();
             switch(format) {
                 case KEYPAIRS:
-                    // TODO keypairs array parse
+                    String startKey = ""; // the key that passes when we know a new element is starting
+                    String[] lines = response.split("\n");
+                    if (verbose) {
+                        System.out.println(response);
+                    }
+                    PropertyContainer container = null;
+                    for (int i = 1; i < lines.length; i++) {
+                        String key = lines[i].substring(0, lines[i].indexOf(':'));
+                        String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
+                        if (i == 1) {
+                            startKey = key;
+                        }
+                        if (key.equals(startKey)) {
+                            // new element
+                            if (container != null) {
+                                containers.add(container); // add the container that is now done
+                            }
+                            container = new PropertyContainer();
+                        }
+                        
+                        if (container != null) {
+                            container.addProperty(key, value);
+                        }
+                    }
+                    // add the final container if there is any
+                    if (container != null) {
+                        containers.add(container); // add the container that is now done
+                    }
                     break;
                 case JSON:
                     JSONObject resp = parseResponseStringJSON(response);
