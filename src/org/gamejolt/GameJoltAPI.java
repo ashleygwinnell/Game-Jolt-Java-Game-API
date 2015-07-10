@@ -799,7 +799,6 @@ public class GameJoltAPI
 			HashMap<String, String> params = new HashMap<String, String>();
 			params.put("format", "dump");
 			params.put("key", ""+key);
-			
 			response = request("data-store/", params, false);
 			if (verbose) { System.out.println(response); }
 		} else {
@@ -1201,7 +1200,6 @@ public class GameJoltAPI
 			urlString = urlString.concat("&signature=").concat(signature);
 			if (verbose) { System.out.println(urlString); }
 			return this.openURLAndGetResponse(urlString);
-		
 		} catch (UnsupportedEncodingException e) { e.printStackTrace(); }
 		return null;
 	}
@@ -1248,11 +1246,11 @@ public class GameJoltAPI
 			InputStream stream = connection.getInputStream();
 			BufferedInputStream buff = new BufferedInputStream(stream);
 			int character = -1;
-			String response = new String();
+			StringBuilder response = new StringBuilder();
 			while ((character = buff.read()) != -1) {
-				response += (char) character;
+				response.append((char)character);
 			}
-			return response;
+			return response.toString();
 		} catch (IOException e) {
 			//e.printStackTrace();
 			if (this.verbose) { System.err.println("GameJoltAPI: " + e.getMessage()); }
