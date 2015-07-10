@@ -10,56 +10,31 @@ import java.util.HashMap;
  * @since 0.90
  * @version 0.90
  */
-public class Trophy 
+public class Trophy extends PropertyContainer
 {
 	/** The Difficulty level enumeration. */
 	public enum Difficulty {BRONZE, SILVER, GOLD, PLATINUM};
 	
 	/** The Achieved almost-boolean type enumeration. */
 	public enum Achieved {TRUE, FALSE, EMPTY};
-	
-	/** The Trophy properties */
-	private HashMap<String, String> properties;
-	
-	/**
-	 * Create a new Trophy.
-	 */
-	Trophy() {
-		properties = new HashMap<String, String>();
-	}
-	
-	/**
-	 * Adds a property to the Trophy.
-	 * @param key The key by which the property can be accessed.
-	 * @param value The value for the key.
-	 */
-	void addProperty(String key, String value) {
-		properties.put(key, value);
-	}
-	
-	/**
-	 * Gets a property of the Trophy that isn't specified by a specific method.
-	 * This exists for forward compatibility.
-	 * @param key The key of the Trophy attribute you want to obtain.
-	 * @return A property of the Trophy that isn't specified by a specific method.
-	 */
-	public String getProperty(String key) {
-		return properties.get(key);
-	}
-	
+
+        public Trophy(PropertyContainer container) {
+            super(container);
+        }
+        
 	/**
 	 * Get the ID of the Trophy.
 	 * @return The ID of the Trophy.
 	 */
 	public String getId() {
-		return this.getProperty("id");
+		return getProperty("id");
 	}
 	/**
 	 * Get the name of the Trophy.
 	 * @return The name of the Trophy.
 	 */
 	public String getTitle() {
-		return this.getProperty("title");
+		return getProperty("title");
 	}
 	
 	/**
@@ -67,7 +42,7 @@ public class Trophy
 	 * @return The description of the Trophy.
 	 */
 	public String getDescription() {
-		return this.getProperty("description");
+		return getProperty("description");
 	}
 	
 	/**
@@ -76,7 +51,7 @@ public class Trophy
 	 * @return The difficulty of the Trophy.
 	 */
 	public Difficulty getDifficulty() {
-		return Difficulty.valueOf(this.getProperty("difficulty"));
+		return Difficulty.valueOf(getProperty("difficulty"));
 	}
 	
 	/**
@@ -84,7 +59,7 @@ public class Trophy
 	 * @return True if the verified user has the Trophy.
 	 */
 	public boolean isAchieved() {
-		return !this.getProperty("achieved").equals("false");
+		return !getProperty("achieved").equals("false");
 	}
 	
 	/**
@@ -92,7 +67,7 @@ public class Trophy
 	 * @return The URL of the Trophy's image.
 	 */
 	public String getImageURL() {
-		return this.getProperty("image_url");
+		return getProperty("image_url");
 	}
 	
 	@Override

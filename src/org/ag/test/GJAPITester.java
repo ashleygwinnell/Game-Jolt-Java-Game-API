@@ -7,6 +7,7 @@ import org.gamejolt.DataStore.DataStoreOperation;
 import org.gamejolt.DataStore.DataStoreType;
 import org.gamejolt.GameJoltAPI;
 import org.gamejolt.Trophy;
+import org.gamejolt.User;
 
 public class GJAPITester {
 	
@@ -19,7 +20,7 @@ public class GJAPITester {
 		final String USER_NAME = "";
 		final String USER_TOKEN = "";
 		
-		final int TROPHY_ID= 0;
+		final int TROPHY_ID= 1;
 		final int TABLE_ID = 0;
 		
 		// Initialise Game Jolt API
@@ -41,11 +42,15 @@ public class GJAPITester {
 		if (!t.isAchieved()){
 			System.err.println("Trophy was achieved, but is not marked achieved...");
 		}
-		
+                
+                /*
+                User me = api.getVerifiedUser();
+                
 		// get Userdata
-		api.getUser("CROS");
-		api.getUser(1);
-		
+		api.getUser(me.getName());
+		api.getUser(me.getId());
+		*/
+                
 		// Play Sessions
 		api.sessionOpen();
 		api.sessionCheck();

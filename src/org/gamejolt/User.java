@@ -10,8 +10,17 @@ import java.util.HashMap;
  * @since 0.95
  * @version 0.97
  */
-public class User 
+public class User extends PropertyContainer
 {
+    
+        public User() {
+            super();
+        }
+        
+        public User(PropertyContainer other) {
+            super(other);
+        }
+        
 	/** The different types of users that are available at Game Jolt. */
 	public enum UserType {USER, DEVELOPER, MODERATOR, ADMIN};
 	
@@ -19,79 +28,51 @@ public class User
 	public enum UserStatus {ACTIVE, BANNED};
 	
 	/** The User properties map */
-	private HashMap<String, String> properties;
-
-	
-	
-	User() {
-		properties = new HashMap<String, String>();
-	}
-	
-	/**
-	 * Adds a property to the User.
-	 * @param key The key by which the property can be accessed.
-	 * @param value The value for the key.
-	 */
-	void addProperty(String key, String value) {
-		properties.put(key, value);
-	}
-	
-	/**
-	 * Gets a property of the User that isn't specified by a specific method.
-	 * This exists for forward compatibility.
-	 * @param key The key of the User attribute you want to obtain.
-	 * @return A property of the User that isn't specified by a specific method.
-	 */
-	public String getProperty(String key) {
-		return properties.get(key);
-	}
-	
-	
 	void setName(String s) {
-		this.properties.put("username", s);
+		this.addProperty("username", s);
 	}
 	void setToken(String s) {
-		this.properties.put("token", s);
+		this.addProperty("token", s);
 	}
 	void setType(UserType t) {
-		this.properties.put("type", t.toString());
+		this.addProperty("type", t.toString());
 	}
 	void setStatus(UserStatus s) {
-		this.properties.put("status", s.toString());
+		this.addProperty("status", s.toString());
 	}
 	
 	public String getLastLoggedIn(){
-		return properties.get("last_logged_in");
+		return getProperty("last_logged_in");
 	}
 	public String getSignedUp(){
-		return properties.get("signed_up");
+		return getProperty("signed_up");
 	}
 	public int getId(){
-		return Integer.parseInt(properties.get("id"));
+		return Integer.parseInt(getProperty("id"));
 	}
 	public String getName() {
-		return this.properties.get("username");
+		return this.getProperty("username");
 	}
 	public String getToken() {
-		return this.properties.get("token");
+		return this.getProperty("token");
 	}
 	public UserType getType() {
-		return UserType.valueOf(this.properties.get("type"));
+		return UserType.valueOf(this.getProperty("type"));
 	}
 	public String getAvatarURL() {
-		return this.properties.get("avatar_url");
+		return this.getProperty("avatar_url");
 	}
 	public UserStatus getStatus() {
-		return UserStatus.valueOf(this.properties.get("status"));
+		return UserStatus.valueOf(this.getProperty("status"));
 	}
 	public String getDeveloperName() {
-		return this.properties.get("developer_name");
+		return this.getProperty("developer_name");
 	}
 	public String getDeveloperWebsite() {
-		return this.properties.get("developer_website");
+		return this.getProperty("developer_website");
 	}
 	public String getDeveloperDescription() {
-		return this.properties.get("developer_description");
+		return this.getProperty("developer_description");
 	}
 	
 	@Override

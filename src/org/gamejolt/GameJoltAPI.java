@@ -21,8 +21,6 @@ import java.util.Set;
 import org.gamejolt.DataStore.DataStoreOperation;
 import org.gamejolt.DataStore.DataStoreType;
 import org.gamejolt.Trophy.Achieved;
-import org.gamejolt.User.UserStatus;
-import org.gamejolt.User.UserType;
 
 /**
  * <b>GameJoltAPI</b><br/>
@@ -40,6 +38,34 @@ public class GameJoltAPI
 	private final String api_root = new String("gamejolt.com/api/game/");
 	//private final String api_root = new String("gamejoltdevash.dyndns.org/api/game/");
 	
+        public enum Format {
+            XML, 
+            JSON, 
+            KEYPAIR;
+            
+            public GameJoltResponseParser getParser(){
+                if (this == XML) {
+                    return new GameJoltXMLParser();
+                } else if (this == JSON) {
+                    return new GameJoltJSONParser();
+                } 
+                return new GameJoltKeypairsParser(); // default type
+            }
+            @Override
+            public String toString() {
+                if (this == XML) {
+                    return "xml";
+                } else if (this == JSON) {
+                    return "json";
+                } 
+                return "keypair"; // default
+            }
+        };
+        
+        // the parser used for responses
+        private GameJoltResponseParser parser;
+        public Format format;
+        
 	private int gameId;
 	private String privateKey;
 	private String version = "1_1";
@@ -53,7 +79,7 @@ public class GameJoltAPI
 	
 	private boolean verbose = false;
 	private boolean verified = false;
-	
+        
 	/**
 	 * Create a new GameJoltAPI object without trying to verify the user.
 	 * 
@@ -79,6 +105,9 @@ public class GameJoltAPI
 					System.err.println(exc.getCause());
 			}
 		}
+                // the initial parser
+                format = Format.KEYPAIR;
+                parser = format.getParser();
 	}
 		
 	/**
@@ -193,33 +222,8 @@ public class GameJoltAPI
 	 */
 	public User getUser(String name){
 		HashMap<String, String> params = new HashMap<String, String>();
-		params.put("username", name);
-		
-		String response = request("users/", params, false);
-		if (verbose) { System.out.println(response); }
-		
-		String[] lines = response.split("\n");
-		if (!lines[0].trim().equals("success:\"true\"")) {
-			if (verbose) { 
-				System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
-				System.err.println(response);
-			}
-			return null;
-		}
-		
-		User u = new User();
-		for (int i = 1; i < lines.length; i++) {
-			String key = lines[i].substring(0, lines[i].indexOf(':'));
-			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-			if (key.equals("type")) {
-				u.setType(UserType.valueOf(value.toUpperCase()));
-			} else if (key.equals("status")) {
-				u.setStatus(UserStatus.valueOf(value.toUpperCase()));
-			} else {
-				u.addProperty(key, value);
-			}
-		}
-		return u;
+                params.put("username", name);
+		return getUserRequest(params);
 	}
 	/**
 	 * gets the User object of the user with a certain id
@@ -230,34 +234,31 @@ public class GameJoltAPI
 	public User getUser(int id){
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put("user_id", String.valueOf(id));
-		
-		String response = request("users/", params, false);
-		if (verbose) { System.out.println(response); }
-		
-		String[] lines = response.split("\n");
-		if (!lines[0].trim().equals("success:\"true\"")) {
-			if (verbose) { 
-				System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
-				System.err.println(response);
-			}
-			return null;
-		}
-		
-		User u = new User();
-		for (int i = 1; i < lines.length; i++) {
-			String key = lines[i].substring(0, lines[i].indexOf(':'));
-			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-			if (key.equals("type")) {
-				u.setType(UserType.valueOf(value.toUpperCase()));
-			} else if (key.equals("status")) {
-				u.setStatus(UserStatus.valueOf(value.toUpperCase()));
-			} else {
-				u.addProperty(key, value);
-			}
-		}
-		return u;
+		return getUserRequest(params);
 	}
 	
+        /**
+         * Sends a user fetch request using the given parameters.
+         * @param params The parameter to send for the user fetch request.
+         * @return The user object that was returned if it succeeds, or null if it fails.
+         */
+        private User getUserRequest(HashMap<String, String> params) {
+                String response = request("users/", params, false);
+		if (verbose) { System.out.println(response); }
+		
+                try {
+                    User u = parser.parseUserRequestResponse(response);
+                    if (verbose && u == null) { 
+                            System.err.println("GameJoltAPI: Could not get the Verified User with Username: " + this.username); 
+                            System.err.println(response);
+                    }
+                    return u;
+                } catch (Exception pe) {
+                    pe.printStackTrace();
+                    return null;
+                }
+        }
+        
 	/**
 	 * Return the User object if the user is verified, otherwise return null.
 	 * @return the User object if the user is verified, otherwise null.
@@ -272,7 +273,7 @@ public class GameJoltAPI
 	}
 	
 	/**
-	 * Retrieve all of the Highscores from GameJolt for the game in an array.
+	 * Retrieve the first 100 of the Highscores from GameJolt for the game in an array.
 	 * @return all of the Highscores from GameJolt for the game in an array.
 	 */
 	public ArrayList<Highscore> getHighscores() {
@@ -280,7 +281,7 @@ public class GameJoltAPI
 	}
 	
 	/**
-	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
+	 * Retrieve the first 100 Highscores from GameJolt for either a game or the verified user.
 	 * 
 	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
 	 * @return An array of Highscore objects on success, an empty array or null on failure.
@@ -300,7 +301,8 @@ public class GameJoltAPI
 	/**
 	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
 	 * 
-	 * @param id the id of the Highscoretable
+	 * @param id the id of the Highscoretable. If 0 is given it will use
+         * the primary high score table.
 	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
 	 * @return An array of Highscore objects on success, an empty array or null on failure.
 	 */
@@ -309,6 +311,7 @@ public class GameJoltAPI
 	}
 	/**
 	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
+         * THis will use the primary high score table.
 	 * 
 	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
 	 * @param limit the maximum amount of highscores to receive
@@ -320,7 +323,8 @@ public class GameJoltAPI
 	
 	/**
 	 * Retrieve a list of Highscores from GameJolt for either a game or the verified user.
-	 * @param id the id of the table
+	 * @param id the id of the table. If 0 is given it will use the primary
+         * high score table
 	 * 
 	 * @param all If set to true, this will retrieve all highscores. Otherwise it will retrieve the currently verified user's highscores.
 	 * @param limit the number of scores you want to receive (max. 100)
@@ -331,14 +335,12 @@ public class GameJoltAPI
 			if (verbose) { System.err.println("GameJoltAPI: Could not get the Highscores for the verified user as the user is not verified."); }
 			return null; 
 		}
-		ArrayList<Highscore> highscores = new ArrayList<Highscore>();
-		String response = null;
-		
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
+                        String response = null;
+                        if (id!=0)
+                                params.put("table_id", String.valueOf(id));
 			if (all == true) { // all highscores
-				if (id!=0)
-					params.put("table_id", String.valueOf(id));
 				params.put("limit", (""+limit));
 
 				response = request("scores", params, false);			
@@ -346,44 +348,30 @@ public class GameJoltAPI
 				params.put("username", username);
 				params.put("user_token", usertoken);  
 				params.put("limit", ""+limit);
-				if (id!=0)
-					params.put("table_id", String.valueOf(id));
-				
+
 				response = request("scores", params, true);
 			}
 			
 			if (verbose) {
 				System.out.println(response);
 			}
-			
-			String[] lines = response.split("\n");
-			if (!lines[0].trim().equals("success:\"true\"")) {
-				if (verbose) { 
-					System.err.println("GameJoltAPI: Could not get the Highscores."); 
-					System.err.println(response);
-				}
-				return null;
-			}
-			Highscore h = null;
-			for (int i = 1; i < lines.length; i++) {
-				String key = lines[i].substring(0, lines[i].indexOf(':'));
-				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-				if (key.equals("score")) {
-					h = new Highscore();
-				}
-				h.addProperty(key, value);
-				if (key.equals("stored")) {
-					highscores.add(h);
-				}
-			}
-			return highscores;
+                        ArrayList<Highscore> highscores = parser.parseHighscoreResponse(response);
+                        if (highscores == null) {
+                            if (verbose) {
+                                System.err.println("GameJoltAPI: Could not get the highscores "
+                                        + "from the table with the id '" + id + "'");
+                            }
+                        }
+                        return highscores;
 		} catch(Exception e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
+        
 	/**
-	 * retrieve the Rank with the score closest to the given score.
+	 * retrieve the Rank with the score closest to the given score from 
+         * the primary high score table.
 	 * @param score the score for which the rank should be retrieved
 	 * @return the closest rank to the score
 	 */
@@ -393,57 +381,42 @@ public class GameJoltAPI
 	/**
 	 * retrieve the Rank with the score closest to the given score.
 	 * @param score the score for which the rank should be retrieved
-	 * @param id the id of the HighscoreTable
-	 * @return the closest rank to the score
+	 * @param id the id of the HighscoreTable. If this is 0, it will 
+         * get the primary high score table.
+	 * @return the closest rank to the score, or -1 if there was an error
 	 */
-	public int getHighscoreRank(int score, int id){
-		String response = null;
-		
+	public int getHighscoreRank(int score, int id){		
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
+                        // if no ID is supplied, it will get the primary score table.
 			if (id!=0)
 				params.put("table_id", String.valueOf(id));
 			params.put("sort", String.valueOf(score));
 
-			response = request("scores/get-rank", params, false);
+			String response = request("scores/get-rank", params, false);
 			
 			if (verbose) {
 				System.out.println(response);
 			}
-			
-			String[] lines = response.split("\n");
-			if (!lines[0].trim().equals("success:\"true\"")) {
-				if (verbose) { 
-					System.err.println("GameJoltAPI: Could not get the Rank of the score."); 
-					System.err.println(response);
-				}
-				return -1;
-			}
-			
-			for (int i = 1; i < lines.length; i++) {
-				if (lines[i].contains("scores")) { break; }
-				String key = lines[i].substring(0, lines[i].indexOf(':'));
-				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-				if (key.equals("rank")) {
-					return Integer.parseInt(value);
-				}
-			}
-			if (verbose){
-				System.err.println("the rank-entry is missing in the answer that was received.");
-			}
-			return -1;
-		} catch(Exception e) {
-			e.printStackTrace();
-			return -1;
-		}
+                        int rank = parser.parseHighscoreRankResponse(response);
+                        if (rank == -1) {
+                            if (verbose) {
+                                System.err.println("GameJoltAPI: Could not get the highscore "
+                                        + "rank for the score '" + score + "' and id '" + id + "'");
+                            }
+                        }
+                        return rank;
+                } catch (Exception pe) {
+                    pe.printStackTrace();
+                    return -1;
+                }
 	}
 	/**
 	 * gets a List of all Highscoretables available for this game
-	 * @return a list of Highscoretables
+	 * @return a list of Highscoretables, or null if there is an error or it's not successful
 	 */
 	public ArrayList<HighscoreTable> getHighscoreTables(){
 		String response = null;
-		ArrayList<HighscoreTable> tables = new ArrayList<>();
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
 			response = request("scores/tables", params, false);
@@ -451,34 +424,18 @@ public class GameJoltAPI
 			if (verbose) {
 				System.out.println(response);
 			}
-			
-			String[] lines = response.split("\n");
-			if (!lines[0].trim().equals("success:\"true\"")) {
-				if (verbose) { 
-					System.err.println("GameJoltAPI: Could not get the Tables."); 
-					System.err.println(response);
-				}
-				return null;
-			}
-			HighscoreTable t=null;
-			for (int i = 1; i < lines.length; i++) {
-				String key = lines[i].substring(0, lines[i].indexOf(':'));
-				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-				if (key.equals("id")) {
-					t = new HighscoreTable();
-				}
-				t.addProperty(key, value);
-				if (key.equals("stored")) {
-					tables.add(t);
-				}
-			}
-			return tables;
-		} catch(Exception e) {
-			e.printStackTrace();
-			return null;
-		}
+			ArrayList<HighscoreTable> tables = parser.parseHighscoreTableResponse(response);
+                        if (tables == null) {
+                            if (verbose) {
+                                System.err.println("GameJoltAPI: Could not get a list of highscore tables");
+                            }
+                        }
+                        return tables;
+                } catch (Exception pe) {
+                    pe.printStackTrace();
+                }
+            return null;
 	}
-	
 	
 	/**
 	 * Add a highscore for the currently verified Game Jolt user.
@@ -537,7 +494,7 @@ public class GameJoltAPI
 			response = request("scores/add",params,true);
 			if (verbose) { System.out.println(response); }
 			
-			if (response.contains("success:\"false\"") || response.equals("REQUEST_FAILED")) {
+			if (!parser.isSuccessful(response)  || response.equals("REQUEST_FAILED")) {
 				if (verbose) { System.err.println("GameJoltAPI: Could not add the High Score."); }
 				if (verbose) { System.out.println(response); }
 				return false;
@@ -602,7 +559,7 @@ public class GameJoltAPI
 			
 			response = request("scores/add", params, false);
 			if (verbose) { System.out.println(response); }
-			if (response.contains("success:\"false\"") || response.equals("REQUEST_FAILED")) {
+			if (!parser.isSuccessful(response) || response.equals("REQUEST_FAILED")) {
 				if (verbose) { System.err.println("GameJoltAPI: Could not add the Guest High Score."); }
 				if (verbose && response.contains("Guests are not allowed to enter scores for this game.")) { // TODO: optimisation.
 					System.err.println("Guests are not allowed to enter scores for this game.");
@@ -641,7 +598,7 @@ public class GameJoltAPI
 	/**
 	 * updates the data of an existing entry on the gamejolts servers by performing a {@link DataStoreOperation} between the data on the Server and the values
 	 * @param type the Type of the Data Store. Should be either DataTypeStore.USER or DataTypeStore.GAME.
-	 * @param keyhe key for which to store the data. You use this key to retrieve the DataStore.
+	 * @param key key for which to store the data. You use this key to retrieve the DataStore.
 	 * @param operation the operation to perform on the entry
 	 * @param value
 	 * @return
@@ -653,7 +610,7 @@ public class GameJoltAPI
 	/**
 	 * updates the data of an existing entry on the gamejolts servers by performing a {@link DataStoreOperation} between the data on the Server and the values
 	 * @param type the Type of the Data Store. Should be either DataTypeStore.USER or DataTypeStore.GAME.
-	 * @param keyhe key for which to store the data. You use this key to retrieve the DataStore.
+	 * @param key key for which to store the data. You use this key to retrieve the DataStore.
 	 * @param operation the operation to perform on the entry
 	 * @param value
 	 * @return
@@ -729,7 +686,7 @@ public class GameJoltAPI
 				if (verbose) { System.out.println(response); }
 				
 			}
-			if (response.contains("success:\"false\"")) {
+			if (!parser.isSuccessful(response)) {
 				if (verbose) { System.err.println("GameJoltAPI: Could not add " + type + " DataStore with Key \"" + key + "\"."); }
 			//	if (verbose) { System.out.println(response); }
 				return null;
@@ -766,8 +723,7 @@ public class GameJoltAPI
 			if (verbose) { System.out.println(response); }
 			
 		}
-		if (response.contains("success:\"false\"")
-				|| response.contains("message:\"There is no item with the key passed in.\"")) {
+		if (!parser.isSuccessful(response)) {
 			if (verbose) { System.err.println("GameJoltAPI: Could not get " + type + " DataStore with Key \"" + key + "\"."); }
 			if (verbose) { System.out.println(response); }
 			
@@ -798,49 +754,38 @@ public class GameJoltAPI
 	 * Retrieve a list of Data Store keys for the type specified by the parameter.
 	 * 
 	 * @param type The Type of keys to get, either DataStoreType.USER or DataStoreType.GAME.
-	 * @return a list of Data Store keys for the type specified by the parameters.
+	 * @return a list of Data Store keys for the type specified by the parameters. 
+         * If there was an error, it returns null.
 	 */
 	public ArrayList<String> getDataStoreKeys(DataStoreType type) {
-		String response;
-		try {
-			if (type == DataStoreType.GAME) {
+                try {
+                        String response;
+                        if (type == DataStoreType.GAME) {
 				String urlString = protocol + api_root + "v" + this.version + "/data-store/get-keys?game_id=" + this.gameId + this.privateKey;
 				String signature = this.MD5(urlString);
 				HashMap<String, String> params = new HashMap<String, String>();
 				params.put("signature", signature);
 				String url = this.getRequestURL("data-store/get-keys", params, false);
 				if (verbose) { System.out.println(url); }
-				response = openURLAndGetResponse(url);
-				if (verbose) { System.out.println(response); }
-				String[] keys = response.split("\n");
-				if (!keys[0].trim().equals("success:\"true\"")) {
-					if (verbose) { System.err.println("GameJoltAPI: Could not get " + type + " DataStores."); }
-					return null;
-				}
-				ArrayList<String> keys_list = new ArrayList<String>();
-				for (int i = 1; i < keys.length; i++) {
-					keys_list.add(keys[i].substring(keys[i].indexOf('"')+1, keys[i].lastIndexOf('"')));
-				}
-				return keys_list;
-			} else {
-				response = this.request("data-store/get-keys", "");
-				if (verbose) { System.out.println(response); } 
-				String[] keys = response.split("\n");
-				//System.out.println(keys[0].trim() + " - " + success);
-				if (!keys[0].trim().equals("success:\"true\"")) {
-					if (verbose) {System.err.println("GameJoltAPI: Could not get " + type + " DataStores."); }
-					return null;
-				}
-				ArrayList<String> keys_list = new ArrayList<String>();
-				for (int i = 1; i < keys.length; i++) {
-					keys_list.add(keys[i].substring(keys[i].indexOf('"')+1, keys[i].lastIndexOf('"')));
-				}
-				return keys_list;
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
+				response = openURLAndGetResponse(url);                                
+                        } else {
+                                response = this.request("data-store/get-keys", "");
+                        }
+                        if (verbose) { System.out.println(response); } 
+                        ArrayList<String> keys_list = parser.parseDatastoresKeysResponse(response);
+                        if (keys_list == null) {
+                            if (verbose) {
+                                System.err.println("GameJoltAPI: Could not get the ServerTime."); 
+                            }
+                        }
+                        return keys_list;
+                } catch(Exception e) {
+                    if (verbose) { 
+                            System.err.println("GameJoltAPI: Error while getting Datastore keys"); 
+                            e.printStackTrace();
+                    }
+                }
+        return null;
 	}
 	
 	/**
@@ -914,7 +859,7 @@ public class GameJoltAPI
 		String response = "";
 		response = this.request("sessions/open/", "");
 		if (this.verbose) { System.out.println(response); } 
-		if (response.contains("success:\"true\"")) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -926,7 +871,7 @@ public class GameJoltAPI
 	}
 	/**
 	 * Check if a session exists for the player
-	 * @return true if the session exists, false if no session exists, the player is not verified or an Exception occured
+	 * @return true if the session exists, false if no session exists or the player is not verified.
 	 */
 	public boolean sessionCheck(){
 		if (!this.verified) { 
@@ -935,13 +880,10 @@ public class GameJoltAPI
 			}
 			return false; 
 		}
-		String response = "";
-		response = this.request("sessions/check/", "");
+		String response = this.request("sessions/check/", "");
 		if (this.verbose) { System.out.println(response); }
-		if (response.contains("success:\"true\"")) {
+		if (parser.isSuccessful(response)) {
 			return true;
-		} else if (response.contains("success:\"false\"")) {
-			return false;
 		}else{
 			if (verbose) {
 				System.err.println("GameJoltAPI: Could not update (ping) Play Session.\n");
@@ -979,16 +921,15 @@ public class GameJoltAPI
 			}
 			return false; 
 		}
-		String response = "";
 		HashMap<String,String> params = new HashMap<String,String>();
 		if (active){
 			params.put("status", "active");
 		}else{
 			params.put("status", "idle");
 		}
-		response = this.request("sessions/ping/", params);
+		String response = this.request("sessions/ping/", params);
 		if (this.verbose) { System.out.println(response); }
-		if (response.contains("success:\"true\"")) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -1014,10 +955,9 @@ public class GameJoltAPI
 			}
 			return false; 
 		}
-		String response = "";
-		response = this.request("sessions/close/", "");
+		String response = this.request("sessions/close/", "");
 		if (this.verbose) { System.out.println(response); }
-		if (response.contains("success:\"true\"")) {
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -1044,9 +984,8 @@ public class GameJoltAPI
 	 * @return true on successfully given trophy.
 	 */
 	public boolean achieveTrophy(int trophyId) {
-		String response = "";
-		response = this.request("trophies/add-achieved", "trophy_id=" + trophyId);
-		if (response.contains("success:\"true\"")) {
+		String response = this.request("trophies/add-achieved", "trophy_id=" + trophyId);
+		if (parser.isSuccessful(response)) {
 			return true;
 		} else {
 			if (verbose) {
@@ -1074,116 +1013,81 @@ public class GameJoltAPI
 	 * @return A list of trophy objects.
 	 */
 	public ArrayList<Trophy> getTrophies(Achieved a) {
-		ArrayList<Trophy> trophies = new ArrayList<Trophy>();
 		String response = this.request("trophies/", "achieved=" + a.toString().toLowerCase());
 		
-		String[] lines = response.split("\n");
-		Trophy t = null;
-		for (int i = 1; i < lines.length; i++) {
-			//int j = (i - 1) % 5;
-			
-			String key = lines[i].substring(0, lines[i].indexOf(':'));
-			String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-			if (key.equals("id")) {
-				t = new Trophy();
-			}
-			if (t!=null){
-				t.addProperty(key, value);
-				if (key.equals("achieved")) {
-					trophies.add(t);
-				}
-			}
-			
-		}
-		return trophies;
+                try {
+                    ArrayList<Trophy> trophies = parser.parseTrophyResponse(response);
+                    if (trophies == null) {
+                        if (verbose) {
+                            System.err.println("GameJoltAPI: Error while getting trophies"); 
+                        }
+                    }
+                    return trophies;
+                } catch(Exception e) {
+                    if (verbose) { 
+                            System.err.println("GameJoltAPI: Error while getting trophies"); 
+                            e.printStackTrace();
+                    }
+                }
+                return null;
 	}
 	
 	/**
 	 * Gets a single trophy from GameJolt as specified by trophyId
 	 * @param trophyId The ID of the Trophy you want to get.
-	 * @return The Trophy Object with the ID passed.
+	 * @return The Trophy Object with the ID passed, or null if there is an error.
 	 */
 	public Trophy getTrophy(int trophyId) {
-	/*	try {
-		HashMap<String, String> params = new HashMap<String, String>();
-		params.put("trophy_id", ""+trophyId+this.privateKey);
-		
-		String url = this.getRequestURL("trophies/", params, false);
-		params.put("trophy_id", ""+trophyId);
-		params.put("signature", this.MD5(url));
-		url = this.getRequestURL("trophies/", params, false);
-		String response = openURLAndGetResponse(url);
-		if (verbose) { System.out.println(response); }
-		System.out.println(response);
-		} catch (Exception e) { }
-		return null;*/
-		
-		
-		
-		
 		String response = this.request("trophies/", "trophy_id=" + trophyId);
-		if (response.contains("success:\"false\"")) {
-			if (verbose) { System.err.println("GameJoltAPI: Could not get Trophy with Id " + trophyId + "."); }
-			return null;
-		}
-		if (response.contains("REQUIRES_AUTHENTICATION")) {
-			if (verbose) { System.err.println("GameJoltAPI: User Authentication is required for this action."); }
-			return null;
-		}
-		if (verbose) { System.out.println(response); }
-		String[] lines = response.split("\n");
-		Trophy t = new Trophy();
-		for (String line : lines) {
-			String key = line.substring(0, line.indexOf(":"));
-			String value = line.substring(line.indexOf('"')+1, line.lastIndexOf('"'));
-			t.addProperty(key, value);
-		}
-		//t.addProperty("id", lines[1].substring(lines[1].indexOf('"')+1, lines[1].lastIndexOf('"')));
-		//t.addProperty("title", lines[2].substring(lines[2].indexOf('"')+1, lines[2].lastIndexOf('"')));
-		//t.addProperty("description", lines[3].substring(lines[3].indexOf('"')+1, lines[3].lastIndexOf('"')));
-		//t.addProperty("difficulty", lines[4].substring(lines[4].indexOf('"')+1, lines[4].lastIndexOf('"')).toUpperCase());
-		//t.addProperty("achieved", lines[5].substring(lines[5].indexOf('"')+1, lines[5].lastIndexOf('"')));
-		//t.addProperty("achieved", lines[5].substring(lines[5].indexOf('"')+1, lines[5].lastIndexOf('"')));
-		
-		return t;
+                try {
+                    ArrayList<Trophy> trophies = parser.parseTrophyResponse(response);
+                    if (trophies == null) {
+                        if (verbose) { 
+                                System.err.println("GameJoltAPI: No such trophies with the ID " + trophyId + " exists"); 
+                        }
+                        return null;
+                    } else {
+                        return trophies.get(0);
+                    }
+                } catch(Exception e) {
+                    if (verbose) { 
+                            System.err.println("GameJoltAPI: Error while getting trophies"); 
+                            e.printStackTrace();
+                    }
+                }
+                return null;
 	}
 	
 
 	public ServerTime getServerTime(){
 		String response = null;
-		ServerTime time = new ServerTime();
 		try {
 			HashMap<String, String> params = new HashMap<String, String>();
-			
 			response = request("get-time", params, false);
 			
 			if (verbose) {
 				System.out.println(response);
 			}
-			
-			String[] lines = response.split("\n");
-			if (!lines[0].trim().equals("success:\"true\"")) {
-				if (verbose) { 
-					System.err.println("GameJoltAPI: Could not get the ServerTime."); 
-					System.err.println(response);
-				}
-				return null;
-			}
-			for (int i = 1; i < lines.length; i++) {
-				String key = lines[i].substring(0, lines[i].indexOf(':'));
-				String value = lines[i].substring( lines[i].indexOf(':')+2, lines[i].lastIndexOf('"'));
-				time.addProperty(key, value);
-			}
-			return time;
-		} catch(Exception e) {
-			e.printStackTrace();
-			return null;
-		}
+                        ServerTime time = parser.parseServerTimeResponse(response);
+                        if (time == null) {
+                            if (verbose) {
+                                System.err.println("GameJoltAPI: Could not get the ServerTime."); 
+                            }
+                        }
+                        return time;
+                } catch(Exception e) {
+                    if (verbose) { 
+                            System.err.println("GameJoltAPI: Could not get the ServerTime."); 
+                            System.err.println(response);
+                    }
+
+                }
+                return null;
 	}
 	
 	/**
 	 * Calculates an MD5 hash.
-	 * @param s The String you want the hash of.
+	 * @param input The String you want the hash of.
 	 * @return The MD5 Hash of the String passed.
 	 */
 	public String MD5(String input)
@@ -1220,25 +1124,20 @@ public class GameJoltAPI
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put("username", username);
 		params.put("user_token", userToken);
-    	String response = this.request("users/auth/", params, false);
-    	if (verbose) { System.out.println(response); }
-    	String[] lines = response.split("\n");
-    	for (String line : lines) {
-    		//System.out.println(line);
-    		try {
-    			if (line.split(":")[1].substring(1, line.split(":")[1].length()-2).equals("true")) {
-	    			this.username = username;
-	    			this.usertoken = userToken;
-	    			this.verified = true;
-	    			return true;
-	    		}
-    		} catch (ArrayIndexOutOfBoundsException e) {
-    			if (verbose) { System.err.println("GameJoltAPI: Could not verify user because the response from GJ was invalid."); }
-    			return false;
-    		}
-    	}
+                String response = this.request("users/auth/", params, false);
+                if (verbose) { System.out.println(response); }
 
-    	return false;
+                if (parser.isSuccessful(response)) {
+                    this.username = username;
+                    this.usertoken = userToken;
+                    this.verified = true;
+                    return true;
+                } else {
+                    if (verbose) {
+                        System.err.println("GameJoltAPI: Could not verify user");
+                    }
+                }
+                return false;
 	}
 	
 	/**
@@ -1295,7 +1194,12 @@ public class GameJoltAPI
 			if (requireVerified && !this.verified) {
 				return "REQUIRES_AUTHENTICATION";
 			}
-			
+                        
+                        // explicitly defining the format parameter overrides the current format
+                        if (!params.containsKey("format")) {
+                            params.put("format", format.toString());
+                        }
+                        
 			if (!requireVerified) {
 				String user_token = params.get("user_token");
 				params.put("user_token", params.get("user_token") + privateKey);
@@ -1314,7 +1218,7 @@ public class GameJoltAPI
 				params.put("user_token", this.usertoken);			
 				params.put("signature", signature);
 			}
-			
+                        
 			String urlString = this.getRequestURL(method, params);
 			if (verbose) { System.out.println(urlString); }
 			return this.openURLAndGetResponse(urlString);
@@ -1372,7 +1276,7 @@ public class GameJoltAPI
 		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
 		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
 		if (!params.containsKey("format"))
-			params.put("format", "keypair");
+			params.put("format", format.toString());
 		Set<String> keyset = params.keySet();
 		Iterator<String> keys = keyset.iterator();
 		String user_token = "";
@@ -1391,4 +1295,14 @@ public class GameJoltAPI
 		
 		return urlString;
 	}
+
+        /**
+         * Set the format Game Jolt's responses will be.
+         * @param format The format to make the responses.
+         */
+        public void setFormat(Format format) {
+            this.format = format;
+            this.parser = format.getParser();
+        }
+
 }
