@@ -667,38 +667,29 @@ public class GameJoltAPI
 	 */
 	public DataStore setDataStore(DataStoreType type, String key, String data) {
 		String response = null;
-		try {
-			if (type == DataStoreType.GAME) {
-				HashMap<String, String> params = new HashMap<String, String>();
-				params.put("data", ""+data);
-				params.put("key", ""+key+this.privateKey);
-				
-				String url = this.getRequestURL("data-store/set", params, false);
-				params.put("key", key);
-				params.put("signature", this.MD5(url));
-				url = this.getRequestURL("data-store/set", params, false);
-				if (verbose) { System.out.println(url); }
-				response = openURLAndGetResponse(url);
-				if (verbose) { System.out.println(response); }
-				
-			} else {
-				response = this.request("data-store/set", "key=" + key + "&data=" + data);
-				if (verbose) { System.out.println(response); }
-				
-			}
-			if (!parser.isSuccessful(response)) {
-				if (verbose) { System.err.println("GameJoltAPI: Could not add " + type + " DataStore with Key \"" + key + "\"."); }
-			//	if (verbose) { System.out.println(response); }
-				return null;
-			}
-			//if (verbose) { System.out.println(response); }
-			DataStore ds = new DataStore();
-			ds.setKey(key);
-			ds.setData(data);
-			ds.setType(type);
-			return ds;
-		} catch (UnsupportedEncodingException e) {}
-		return null;
+		if (type == DataStoreType.GAME) {
+			HashMap<String, String> params = new HashMap<String, String>();
+			params.put("data", ""+data);
+			params.put("key", ""+key);
+			
+			response=request("data-store/set", params, false);
+			
+		} else {
+			response = this.request("data-store/set", "key=" + key + "&data=" + data);
+			if (verbose) { System.out.println(response); }
+			
+		}
+		if (!parser.isSuccessful(response)) {
+			if (verbose) { System.err.println("GameJoltAPI: Could not add " + type + " DataStore with Key \"" + key + "\"."); }
+		//	if (verbose) { System.out.println(response); }
+			return null;
+		}
+		//if (verbose) { System.out.println(response); }
+		DataStore ds = new DataStore();
+		ds.setKey(key);
+		ds.setData(data);
+		ds.setType(type);
+		return ds;
 	}
 	
 	/**
@@ -758,34 +749,30 @@ public class GameJoltAPI
          * If there was an error, it returns null.
 	 */
 	public ArrayList<String> getDataStoreKeys(DataStoreType type) {
-                try {
-                        String response;
-                        if (type == DataStoreType.GAME) {
-				String urlString = protocol + api_root + "v" + this.version + "/data-store/get-keys?game_id=" + this.gameId + this.privateKey;
-				String signature = this.MD5(urlString);
-				HashMap<String, String> params = new HashMap<String, String>();
-				params.put("signature", signature);
-				String url = this.getRequestURL("data-store/get-keys", params, false);
-				if (verbose) { System.out.println(url); }
-				response = openURLAndGetResponse(url);                                
-                        } else {
-                                response = this.request("data-store/get-keys", "");
-                        }
-                        if (verbose) { System.out.println(response); } 
-                        ArrayList<String> keys_list = parser.parseDatastoresKeysResponse(response);
-                        if (keys_list == null) {
-                            if (verbose) {
-                                System.err.println("GameJoltAPI: Could not get the ServerTime."); 
-                            }
-                        }
-                        return keys_list;
-                } catch(Exception e) {
-                    if (verbose) { 
-                            System.err.println("GameJoltAPI: Error while getting Datastore keys"); 
-                            e.printStackTrace();
-                    }
-                }
-        return null;
+		try {
+			String response;
+			if (type == DataStoreType.GAME) {
+				response = request("data-store/get-keys",new HashMap<>(),false);
+			} else {
+				response = this.request("data-store/get-keys", new HashMap<>(),true);
+			}
+			if (verbose) {
+				System.out.println(response);
+			}
+			ArrayList<String> keys_list = parser.parseDatastoresKeysResponse(response);
+			if (keys_list == null) {
+				if (verbose) {
+					System.err.println("GameJoltAPI: Could not get the ServerTime.");
+				}
+			}
+			return keys_list;
+		} catch (Exception e) {
+			if (verbose) {
+				System.err.println("GameJoltAPI: Error while getting Datastore keys");
+				e.printStackTrace();
+			}
+		}
+		return null;
 	}
 	
 	/**
@@ -1191,35 +1178,17 @@ public class GameJoltAPI
 	private String request(String method, HashMap<String, String> params, boolean requireVerified)
 	{
 		try {
-			if (requireVerified && !this.verified) {
-				return "REQUIRES_AUTHENTICATION";
-			}
-                        
-                        // explicitly defining the format parameter overrides the current format
-                        if (!params.containsKey("format")) {
-                            params.put("format", format.toString());
-                        }
-                        
-			if (!requireVerified) {
-				String user_token = params.get("user_token");
-				params.put("user_token", params.get("user_token") + privateKey);
-				String urlString = this.getRequestURL(method, params);
-				String signature = this.MD5(urlString);
-				
-				params.put("user_token", user_token);
-				params.put("signature", signature);
-			} else {
-				// String user_token = params.get("user_token");
-				params.put("user_token", this.usertoken + privateKey);
+			if (requireVerified){
+				if (!verified){
+					return "REQUIRES_AUTHENTICATION";
+				}
+				params.put("user_token", this.usertoken);
 				params.put("username", this.username);
-				String urlString = this.getRequestURL(method, params);
-				String signature = this.MD5(urlString);
-				
-				params.put("user_token", this.usertoken);			
-				params.put("signature", signature);
 			}
-                        
 			String urlString = this.getRequestURL(method, params);
+			String signature = this.MD5(urlString.concat(privateKey));
+			
+			urlString = urlString.concat("&signature=").concat(signature);
 			if (verbose) { System.out.println(urlString); }
 			return this.openURLAndGetResponse(urlString);
 		
@@ -1261,25 +1230,13 @@ public class GameJoltAPI
 	 * @return The full request url.
 	 */
 	private String getRequestURL(String method, HashMap<String, String> params) throws UnsupportedEncodingException {
-		return this.getRequestURL(method, params, true);
-	}
-	
-	/**
-	 * Get the full request url from the parameters given.
-	 * @param method The GameJolt API method, such as "game-api/add-trophy".
-	 * @param params A map of the parameters you want to include. 
-	 * @param addUserToken Whether or not to add the UserToken to the url.
-	 * @return The full request url.
-	 * @throws UnsupportedEncodingException 
-	 */
-	private String getRequestURL(String method, HashMap<String, String> params, boolean addUserToken) throws UnsupportedEncodingException {
 		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
 		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
 		if (!params.containsKey("format"))
 			params.put("format", format.toString());
 		Set<String> keyset = params.keySet();
 		Iterator<String> keys = keyset.iterator();
-		String user_token = "";
+		String user_token = null;
 		while (keys.hasNext()) {
 			String key = keys.next();
 			String value = params.get(key);
@@ -1289,7 +1246,7 @@ public class GameJoltAPI
 			}
 			urlString += "&" + key + "=" + URLEncoder.encode(value, "UTF-8");
 		}
-		if (addUserToken) {
+		if (user_token!=null) {
 			urlString += "&user_token=" + user_token;
 		}
 		
