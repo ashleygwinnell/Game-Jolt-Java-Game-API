@@ -1,10 +1,13 @@
 package org.gamejolt;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -14,6 +17,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Set;
@@ -669,13 +673,19 @@ public class GameJoltAPI
 		String response = null;
 		if (type == DataStoreType.GAME) {
 			HashMap<String, String> params = new HashMap<String, String>();
-			params.put("data", ""+data);
+			HashMap<String,String> postParams = new HashMap<String,String>();
 			params.put("key", ""+key);
+			postParams.put("data", ""+data);
 			
-			response=request("data-store/set", params, false);
+			response=requestAsPost("data-store/set", params,postParams, false);
 			
 		} else {
-			response = this.request("data-store/set", "key=" + key + "&data=" + data);
+			HashMap<String, String> params = new HashMap<String, String>();
+			HashMap<String,String> postParams = new HashMap<String,String>();
+			params.put("key", ""+key);
+			postParams.put("data", ""+data);
+			
+			response = this.requestAsPost("data-store/set", params,postParams,true);
 			if (verbose) { System.out.println(response); }
 			
 		}
@@ -1172,7 +1182,7 @@ public class GameJoltAPI
 	 * @param method The GameJolt API method, such as "add-trophy", without the "game-api/" part.
 	 * @param params A map of the parameters you want to include. 
 	 * 				 Note that if the user is verified you do not have to include the username/user_token/game_id.
-	 * @param requireVerified This is only set to false when checking if the user is verified.
+	 * @param requireVerified This is only set to true when checking if the user is verified.
 	 * @return
 	 */
 	private String request(String method, HashMap<String, String> params, boolean requireVerified)
@@ -1194,9 +1204,36 @@ public class GameJoltAPI
 		
 		} catch (UnsupportedEncodingException e) { e.printStackTrace(); }
 		return null;
-		
 	}
-	
+	/**
+	 * Make a request to the GameJoltAPI using the RequestMethod POST
+	 * @param method The GameJolt API method, such as "add-trophy", without the "game-api/" part.
+	 * @param urlParams A map of the parameters you want to include in the url
+	 * 				 Note that if the user is verified you do not have to include the username/user_token/game_id.
+	 * @param postParams A map of the parameters you want to include in the body of the POST-request
+	 * @param requireVerifiedThis is only set to true when checking if the user is verified.
+	 * @return
+	 */
+	private String requestAsPost(String method, HashMap<String, String> urlParams,HashMap<String, String> postParams, boolean requireVerified)
+	{
+		try {
+			if (requireVerified){
+				if (!verified){
+					return "REQUIRES_AUTHENTICATION";
+				}
+				urlParams.put("user_token", this.usertoken);
+				urlParams.put("username", this.username);
+			}
+			String urlString = this.getRequestURL(method, urlParams);
+			String signature = this.MD5(urlString.concat(privateKey));
+			
+			urlString = urlString.concat("&signature=").concat(signature);
+			if (verbose) { System.out.println(urlString); }
+			return this.openURLAndGetResponseUsingPost(urlString,postParams);
+		
+		} catch (UnsupportedEncodingException e) { e.printStackTrace(); }
+		return null;
+	}
 	/**
 	 * Performs the HTTP Request.
 	 * @param urlString The URL to HTTP Request.
@@ -1221,6 +1258,66 @@ public class GameJoltAPI
 			if (this.verbose) { System.err.println("GameJoltAPI: " + e.getMessage()); }
 			return "REQUEST_FAILED";
 		}
+	}
+	/**
+	 * Performs the HTTP Request.
+	 * @param urlString The URL to HTTP Request.
+	 * @return The HTTP Response.
+	 */
+	public String openURLAndGetResponseUsingPost(String urlString,HashMap<String,String> postParams)
+	{
+		try {
+			URL url = new URL(urlString);
+			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestMethod("POST");
+			connection.setDoOutput(true);
+			OutputStream os = connection.getOutputStream();
+			BufferedWriter writer = new BufferedWriter(
+			        new OutputStreamWriter(os, "UTF-8"));
+			writer.write(getQuery(postParams));
+			writer.flush();
+			writer.close();
+			os.close();
+			connection.connect();
+			InputStream stream = connection.getInputStream();
+			BufferedInputStream buff = new BufferedInputStream(stream);
+			int character = -1;
+			String response = new String();
+			while ((character = buff.read()) != -1) {
+				response += (char) character;
+			}
+			System.out.println(response);
+			return response;
+		} catch (IOException e) {
+			e.printStackTrace();
+			if (this.verbose) { System.err.println("GameJoltAPI: " + e.getMessage()); }
+			return "REQUEST_FAILED";
+		}
+	}
+	/**
+	 * converts a HashMap into the html Parameter-format<br>key1=value1&key2=value2&...&keyN=valueN
+	 * @param params the HashMap that should be converted
+	 * @return a String of the format key1=value1&key2=value2&...&keyN=valueN
+	 * @throws UnsupportedEncodingException if UTF-8 is not supported
+	 */
+	private String getQuery(HashMap<String,String> params) throws UnsupportedEncodingException
+	{
+	    StringBuilder result = new StringBuilder();
+	    boolean first = true;
+
+	    for (Entry<String, String> pair : params.entrySet())
+	    {
+	        if (first)
+	            first = false;
+	        else
+	            result.append("&");
+
+	        result.append(URLEncoder.encode(pair.getKey(), "UTF-8"));
+	        result.append("=");
+	        result.append(URLEncoder.encode(pair.getValue(), "UTF-8"));
+	    }
+
+	    return result.toString();
 	}
 	
 	/**
