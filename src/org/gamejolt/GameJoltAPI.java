@@ -21,11 +21,6 @@ import java.util.Set;
 import org.gamejolt.DataStore.DataStoreOperation;
 import org.gamejolt.DataStore.DataStoreType;
 import org.gamejolt.Trophy.Achieved;
-import org.gamejolt.User.UserStatus;
-import org.gamejolt.User.UserType;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 
 /**
  * <b>GameJoltAPI</b><br/>
@@ -46,7 +41,7 @@ public class GameJoltAPI
         public enum Format {
             XML, 
             JSON, 
-            KEYPAIRS;
+            KEYPAIR;
             
             public GameJoltResponseParser getParser(){
                 if (this == XML) {
@@ -55,7 +50,16 @@ public class GameJoltAPI
                     return new GameJoltJSONParser();
                 } 
                 return new GameJoltKeypairsParser(); // default type
-            }        
+            }
+            @Override
+            public String toString() {
+                if (this == XML) {
+                    return "xml";
+                } else if (this == JSON) {
+                    return "json";
+                } 
+                return "keypair"; // default
+            }
         };
         
         // the parser used for responses
@@ -102,7 +106,7 @@ public class GameJoltAPI
 			}
 		}
                 // the initial parser
-                format = Format.KEYPAIRS;
+                format = Format.KEYPAIR;
                 parser = format.getParser();
 	}
 		
@@ -218,6 +222,7 @@ public class GameJoltAPI
 	 */
 	public User getUser(String name){
 		HashMap<String, String> params = new HashMap<String, String>();
+                params.put("username", name);
 		return getUserRequest(params);
 	}
 	/**
@@ -1192,17 +1197,7 @@ public class GameJoltAPI
                         
                         // explicitly defining the format parameter overrides the current format
                         if (!params.containsKey("format")) {
-                            switch (format) {
-                                case KEYPAIRS:
-                                    params.put("format", "keypair");
-                                    break;
-                                case JSON:
-                                    params.put("format", "json");
-                                    break;
-                                case XML:
-                                    params.put("format", "xml");
-                                    break;
-                            }
+                            params.put("format", format.toString());
                         }
                         
 			if (!requireVerified) {
@@ -1281,7 +1276,7 @@ public class GameJoltAPI
 		String urlString = protocol + api_root + "v" + this.version + "/" + method + "?game_id=" + this.gameId;
 		//String urlString = protocol + api_root + method + "?game_id=" + this.gameId;
 		if (!params.containsKey("format"))
-			params.put("format", "keypair");
+			params.put("format", format.toString());
 		Set<String> keyset = params.keySet();
 		Iterator<String> keys = keyset.iterator();
 		String user_token = "";
