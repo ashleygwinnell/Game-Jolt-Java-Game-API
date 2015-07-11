@@ -83,8 +83,8 @@ public class GameJoltJSONParser extends GameJoltResponseParser{
     public User parseUserRequestResponse(String response) {
         JSONObject resp = parseResponseString(response);
         User u = new User(parsePropertiesFrom(resp, getUserProperties()));
-        u.setType(User.UserType.valueOf(resp.get("type").toString()));
-        u.setStatus(User.UserStatus.valueOf(resp.get("status").toString()));
+        u.setType(User.UserType.valueOf(resp.get("type").toString().toUpperCase()));
+        u.setStatus(User.UserStatus.valueOf(resp.get("status").toString().toUpperCase()));
         return u;
     }
     
