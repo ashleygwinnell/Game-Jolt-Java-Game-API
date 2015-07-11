@@ -134,4 +134,20 @@ public class QuickTester {
 		assertTrue(api.sessionUpdate());
 		assertTrue(api.sessionClose());
 	}
+	@Test
+	public void testSubmissionOfLargeData(){
+		api.setVerbose(true);
+		final int SIZE=1000000;
+		StringBuilder sb = new StringBuilder(SIZE);
+		for (int i=0; i<SIZE/9; i++){
+			sb.append("NineBytes");
+		}
+		DataStore s;
+		System.out.println("setting DataStore");
+		assertNotNull(s=api.setDataStore(DataStoreType.GAME, "longKey", sb.toString()));
+		System.out.println("retrieving DataStore");
+		assertNotNull(s=api.getDataStore(DataStoreType.GAME, "longKey"));
+		System.out.println("comparing DataStore");
+		assertEquals(sb.toString(),s.getData());
+	}
 }
