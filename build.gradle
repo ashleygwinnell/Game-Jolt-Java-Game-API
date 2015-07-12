@@ -1,0 +1,50 @@
+plugins {
+  id 'maven-publish'
+  id 'eclipse'
+  id 'idea'
+  id 'com.github.johnrengelman.shadow' version '1.2.1'
+}
+
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+group = 'com.gamejolt'
+version = '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+
+dependencies {
+  compile fileTree(dir: 'lib', include: '*.jar')
+}
+
+archivesBaseName = project.name.toLowerCase()
+
+defaultTasks 'clean', 'shadowJar'
+
+shadowJar {
+  baseName = archivesBaseName + '-all'
+  classifier = ''
+
+  dependencies {
+    include(dependency(fileTree(dir: 'lib', include: '*.jar')))
+  }
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.shadow
+      artifactId archivesBaseName + '-all'
+    }
+  }
+  
+  repositories {
+    maven {
+      url System.getenv('REPO_' + (version.endsWith('-SNAPSHOT') ? 'SNAPSHOTS' : 'RELEASES')) ?: "$buildDir/repo"
+    }
+  }
+}
