@@ -6,9 +6,9 @@
 
 <project default="jar" name="GJAPI">
    
-	<property name="src.dir" value="src" />
-	<property name="obj.dir" value="bin" />
-	<property name="target.dir" value="." />
+	<property name="src.dir" value="src/main/java" />
+	<property name="obj.dir" value="build/classes" />
+	<property name="target.dir" value="build/lib" />
 	<property name="javadoc.dir" value="docs" />
   
 	<!-- Compile and archive Aethershard. -->
