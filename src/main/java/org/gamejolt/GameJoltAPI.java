@@ -668,7 +668,7 @@ public class GameJoltAPI
 	public DataStore setDataStore(DataStoreType type, String key, String data) {
 		String response = null;
 		if (type == DataStoreType.GAME) {
-			HashMap<String, String> params = new HashMap<String, String>();
+			HashMap<String, String> params = new HashMap<>();
 			params.put("data", ""+data);
 			params.put("key", ""+key);
 			
@@ -703,7 +703,7 @@ public class GameJoltAPI
 	public boolean removeDataStore(DataStoreType type, String key) {
 		String response = null;
 		if (type == DataStoreType.GAME) {
-			HashMap<String, String> params = new HashMap<String, String>();
+			HashMap<String, String> params = new HashMap<>();
 			params.put("key",(""+key));
 			response = request("data-store/remove", params, false);
 			if (verbose) { System.out.println(response); }
@@ -752,9 +752,9 @@ public class GameJoltAPI
 		try {
 			String response;
 			if (type == DataStoreType.GAME) {
-				response = request("data-store/get-keys",new HashMap<>(),false);
+				response = request("data-store/get-keys",new HashMap<String,String>(),false);
 			} else {
-				response = this.request("data-store/get-keys", new HashMap<>(),true);
+					response = this.request("data-store/get-keys", new HashMap<String,String>(),true);
 			}
 			if (verbose) {
 				System.out.println(response);
