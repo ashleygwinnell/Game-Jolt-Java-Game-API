@@ -26,14 +26,14 @@ import org.junit.Test;
 
 public class QuickTester {
  
- private static final int gameId=78651;
- private static final String privateKey = "b837512411156582cef155b062537c87";
+ private static final int gameId=0;
+ private static final String privateKey = "";
  
- private static final int trophyId = 34431;
- private static final int highscoreId = 81521;
+ private static final int trophyId = 0;
+ private static final int highscoreId = 0;
  
- private static final String username = "modwizcode";
- private static final String token = "099b40";
+ private static final String username = "";
+ private static final String token = "";
  
  
  static GameJoltAPI api;

@@ -102,10 +102,10 @@ public class GameJoltXMLParser extends GameJoltResponseParser{
             String key = data.getNodeName();
             if (key.equals("type")) {
                 haveType = true;
-                u.setType(User.UserType.valueOf(value));
+                u.setType(User.UserType.valueOf(value.toUpperCase()));
             } else if (key.equals("status")) {
                 haveStatus = true;
-                u.setStatus(User.UserStatus.valueOf(value));
+                u.setStatus(User.UserStatus.valueOf(value.toUpperCase()));
             }
             if (haveType && haveStatus) {
                 break; // already have everything

@@ -81,10 +81,11 @@ public class GameJoltJSONParser extends GameJoltResponseParser{
 
     @Override
     public User parseUserRequestResponse(String response) {
-        JSONObject resp = parseResponseString(response);
+         // get the first user in the list because this methodo only returns one user
+        JSONObject resp = (JSONObject)(((JSONArray)(parseResponseString(response)).get("users")).get(0));
         User u = new User(parsePropertiesFrom(resp, getUserProperties()));
-        u.setType(User.UserType.valueOf(resp.get("type").toString()));
-        u.setStatus(User.UserStatus.valueOf(resp.get("status").toString()));
+        u.setType(User.UserType.valueOf(resp.get("type").toString().toUpperCase()));
+        u.setStatus(User.UserStatus.valueOf(resp.get("status").toString().toUpperCase()));
         return u;
     }
     
